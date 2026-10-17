@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><title>DRIFT | Realistic Kraken Survival</title><style>
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#092b43;font-family:Trebuchet MS,Arial,sans-serif;color:#f8e7c9}canvas{display:block}#hud{position:absolute;inset:0;pointer-events:none}#title{position:absolute;top:25px;left:32px;font-size:29px;font-weight:900;letter-spacing:5px;text-shadow:0 2px 8px #001927}#subtitle{font-size:11px;letter-spacing:3px;font-weight:normal;margin-top:5px}#help{position:absolute;bottom:22px;left:28px;background:#092c43c9;border:1px solid #8db2bc88;padding:12px 16px;border-radius:14px;font-size:13px;line-height:1.7;box-shadow:0 4px 24px #25648a20}#stats{position:absolute;top:25px;right:26px;background:#092c43c9;border:1px solid white;padding:13px 20px;border-radius:16px;text-align:right;line-height:1.8;font-size:13px}#center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#05263cdd,#0b4e62b0);pointer-events:auto}#panel{background:#10374aee;border:2px solid #c59b5d;padding:32px 44px;border-radius:25px;text-align:center;max-width:460px;box-shadow:0 14px 55px #286a7b3b}h1{font-size:45px;letter-spacing:7px;margin:0 0 8px}button{background:#bd8847;color:white;border:0;border-radius:30px;padding:13px 38px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:17px}button:hover{background:#98652e}#error{position:absolute;bottom:12px;right:12px;max-width:420px;color:#852c2c;background:#092c43c9;padding:8px;display:none}#mobile{position:absolute;bottom:18px;right:20px;display:none;gap:10px;pointer-events:auto}#mobile button{padding:14px 20px;margin:0;touch-action:none}@media(pointer:coarse){#mobile{display:flex}#help{font-size:10px;max-width:200px}}
+#weatherPanel{position:absolute;top:145px;right:26px;background:#092c43df;border:1px solid #b9d1d7;padding:12px 14px;border-radius:14px;pointer-events:auto;font-size:13px;min-width:190px}#weatherPanel select{width:100%;margin-top:7px;padding:7px;background:#153f53;color:#fff1d7;border:1px solid #88a9b7;border-radius:7px}#weatherPanel label{display:block;margin-top:9px}#weatherPanel input{width:100%;accent-color:#dfb579}#weatherStatus{font-size:11px;color:#c8e7e8;margin-top:6px}#flash{position:absolute;inset:0;background:#d7f3ff;opacity:0;pointer-events:none} @media(max-width:650px){#weatherPanel{top:110px;right:8px;min-width:155px}#stats{top:12px;right:8px}#title{top:12px;left:12px;font-size:22px}#help{max-width:190px}}#paintGrain{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.16;mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.62' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E")}#audioControl{position:absolute;right:26px;top:335px;pointer-events:auto;background:#0c2d43e8;color:#f7e7c8;border:1px solid #9cb7c4;border-radius:10px;padding:9px 13px;cursor:pointer;font:600 13px system-ui;z-index:8}#audioControl:focus-visible{outline:2px solid white}@media(max-width:650px){#audioControl{right:8px;top:310px}}#cinemaVignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 52% 48%,transparent 38%,rgba(10,25,26,.09) 77%,rgba(8,20,23,.29) 100%)}
+
+/* Phone-first HUD and ergonomic, multitouch-safe controls */
+#settingsToggle{display:none}
+@media(pointer:coarse), (max-width:760px){
+ html,body{overscroll-behavior:none;touch-action:none}#paintGrain{opacity:.07}
+ #mobile{display:flex;position:fixed;left:0;right:0;bottom:0;bottom:env(safe-area-inset-bottom);padding:0 14px 14px;justify-content:space-between;align-items:flex-end;z-index:12;pointer-events:none}
+ #mobile .steer,#mobile .throttle{display:flex;gap:9px;align-items:flex-end;pointer-events:auto}
+ #mobile button{display:flex;align-items:center;justify-content:center;min-width:58px;height:63px;padding:0 11px;margin:0;border:1px solid #d9b9809c;border-radius:16px;background:#0a304cdd;color:#fff4da;font:800 16px system-ui;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 4px 18px #001a32a0}
+ #mobile .throttle{flex-wrap:wrap;max-width:180px;justify-content:flex-end}
+ #mobile .throttle button:first-child{min-width:76px;background:#a77636e8}
+ #mobile .boostButton{min-width:85px;font-size:13px;background:#156a77ed}
+ #mobile .pressed{background:#e8b76a!important;color:#102b3d!important;transform:scale(.95)}
+ #title{top:calc(8px + env(safe-area-inset-top));left:12px;font-size:20px;letter-spacing:3px}
+ #subtitle{font-size:8px;letter-spacing:1px}
+ #stats{top:calc(7px + env(safe-area-inset-top));right:8px;font-size:10px;line-height:1.45;padding:8px 10px;border-radius:10px;background:#08263bdc}
+ #help{display:none}
+ #settingsToggle{display:block;position:fixed;top:calc(88px + env(safe-area-inset-top));left:10px;z-index:16;pointer-events:auto;background:#092f48e8;border:1px solid #b3c6cb;color:#fff0d2;border-radius:10px;padding:10px 12px;margin:0;font-size:11px}
+ #weatherPanel{display:none;position:fixed;top:calc(130px + env(safe-area-inset-top));left:10px;right:auto;width:min(270px,calc(100vw - 20px));max-height:calc(100dvh - 255px);overflow:auto;z-index:16;font-size:13px}
+ #weatherPanel.mobileOpen{display:block}
+ #audioControl{position:fixed;top:calc(88px + env(safe-area-inset-top));right:9px;z-index:16;font-size:11px;padding:9px 10px}
+ #center{position:fixed;z-index:30;padding:calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));overflow-y:auto;align-items:center}
+ #panel{width:min(100%,450px);max-height:calc(100dvh - 30px);overflow-y:auto;padding:19px 18px;border-radius:17px}
+ #panel h1{font-size:36px}
+ #panel p{font-size:12px;line-height:1.5}
+ #panel button{margin-top:10px;min-height:52px}
+ #error{z-index:40;max-width:85vw;bottom:120px}
+}
+@media(max-width:390px){#mobile button{min-width:51px;height:58px;font-size:14px}#mobile .throttle{max-width:159px}#mobile .throttle button:first-child{min-width:66px}#mobile .boostButton{min-width:77px}}
+</style></head><body><div id='paintGrain'></div><div id='cinemaVignette'></div><div id="hud"><div id="title">DRIFT<div id="subtitle">ESCAPE THE ABYSS</div></div><div id="stats">HEADING <span id="heading">000°</span><br>MOVE SPEED <span id="speed">0.0</span><br>DISTANCE <span id="distance">0.0</span> nm<br><strong style="color:#ffba91">KRAKEN <span id="monsterDistance">--</span> m</strong><br>SURVIVAL <span id="survival">0:00</span><br>BEST TIME <span id="bestTime">0:00</span><br>BOOST <span id="boost">100</span>%</div><div id="help"><b>Escape the hunting kraken</b><br>W / ↑ : Move forward &nbsp; S / ↓ : Move backward<br>A / ← and D / → : Rotate ship 360°<br>Drag mouse: Orbit camera &nbsp; Scroll: Zoom<br>Shift: Speed boost &nbsp; Space: Reset camera</div><div id="weatherPanel"><b>SKY & SEA</b><label>Weather<select id="weather"><option value="clear">Golden calm</option><option value="painting" selected>Golden tempest (painting)</option><option value="cloudy">Overcast</option><option value="rain">Rain</option><option value="storm">Thunderstorm</option><option value="tsunami">Tsunami</option><option value="fog">Heavy fog</option><option value="sunset">Sunset</option></select></label><label>Wave height <span id="waveValue">7.5 m</span><input id="waveHeight" type="range" min="0.3" max="20" step="0.1" value="7.5"></label><label>Time of day <span id="timeValue">4:15 PM</span><input id="dayTime" type="range" min="0" max="24" step="0.25" value="16.75"></label><div id="weatherStatus">Gentle swells</div></div><button id="audioControl" type="button" aria-pressed="true">🔊 Sound: ON</button><div id="flash"></div><div id="mobile"><div class="steer"><button data-key="a" aria-label="Turn left">◀</button><button data-key="d" aria-label="Turn right">▶</button></div><div class="throttle"><button data-key="w" aria-label="Sail forward">SAIL ▲</button><button data-key="shift" class="boostButton" aria-label="Speed boost">BOOST ⚡</button><button data-key="s" aria-label="Reverse">▼</button></div></div><button id="settingsToggle" type="button" aria-expanded="false">⚙ SEA & SKY</button></div><div id="center"><div id="panel"><h1>DRIFT</h1><div style="font-size:19px">Escape the Abyss</div><p>A giant kraken hunts your tall ship from beneath the waves. Outrun its tentacles, navigate the open sea, and survive as long as you can. Your survival time and personal best are tracked, and your high score is saved in this browser. On phones, hold SAIL to move, steer with ◀ ▶, and hold BOOST for extra speed. On desktop use W/S, A/D, and Shift. Your ship is faster than the Kraken, even without boosting. Forty percent of swells break into whitewater at their crests. Raise the wave-height slider as high as 20 meters for towering seas, or choose Tsunami for enormous parallel wave rows, with 20% forming full wave barrels with an automatic visibility camera beneath a grey sky.</p><button id="start">ESCAPE NOW</button><p style="font-size:11px">Phone or desktop browser • Internet required for the 3D library</p></div></div><div id="error"></div>
+<script>window.addEventListener('error',function(e){const el=document.getElementById('error');el.style.display='block';el.textContent='Could not start 3D game: '+e.message;});window.addEventListener('unhandledrejection',function(e){const el=document.getElementById('error');el.style.display='block';el.textContent='3D loading issue: '+String(e.reason);});</script><script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
+window.addEventListener('error',e=>{const el=document.getElementById('error');el.style.display='block';el.textContent='Game error: '+e.message});const scene=new THREE.Scene();scene.background=new THREE.Color('#17475c');scene.fog=new THREE.FogExp2('#245568',.0008);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance',precision:'highp'});renderer.setPixelRatio(Math.min(devicePixelRatio,matchMedia("(pointer:coarse)").matches?1.15:1.8));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.94;renderer.physicallyCorrectLights=true;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);renderer.domElement.style.touchAction='none';
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,2500);
+const skyFill=new THREE.HemisphereLight('#b6d7f0','#071a2e',1.35);scene.add(skyFill);const oceanBounce=new THREE.DirectionalLight('#4b9bc4',.65);oceanBounce.position.set(100,35,80);scene.add(oceanBounce);const sunlight=new THREE.DirectionalLight('#ffb850',3.8);sunlight.position.set(-120,160,-260);scene.add(sunlight);sunlight.castShadow=true;sunlight.shadow.mapSize.set(matchMedia("(pointer:coarse)").matches?1024:2048,matchMedia("(pointer:coarse)").matches?1024:2048);sunlight.shadow.camera.left=-95;sunlight.shadow.camera.right=95;sunlight.shadow.camera.top=95;sunlight.shadow.camera.bottom=-95;sunlight.shadow.bias=-.00025;sunlight.shadow.normalBias=.035;
+const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness,flatShading:false,side:THREE.DoubleSide});
+const wood=mat('#513b2b',.78),darkWood=mat('#30231e'),trim=mat('#242b30'),sailMat=mat('#4d75bd'),white=mat('#fff2d3'),sand=mat('#f6cc6a'),leaf=mat('#6a9e55'),rock=mat('#8e8b8b');
+function makeWoodTexture(){
+ const c=document.createElement('canvas');c.width=512;c.height=512;
+ const g=c.getContext('2d');g.fillStyle='#b69a79';g.fillRect(0,0,512,512);
+ let seed=7147;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+ for(let i=0;i<1100;i++){let y=rand()*512;g.strokeStyle='rgba(52,29,18,'+(.02+rand()*.15)+')';g.lineWidth=.3+rand()*2;g.beginPath();g.moveTo(0,y);g.bezierCurveTo(180,y+rand()*11-5,340,y+rand()*11-5,512,y+rand()*8-4);g.stroke()}
+ for(let y=0;y<512;y+=52){g.fillStyle='rgba(28,19,13,.24)';g.fillRect(0,y,512,2);for(let x=25;x<512;x+=92){g.fillStyle='rgba(25,20,15,.35)';g.beginPath();g.arc(x+(y%3)*17,y+5,1.5,0,Math.PI*2);g.fill()}}
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(1.5,1.5);tex.anisotropy=8;return tex;
+}
+wood.map=makeWoodTexture();wood.roughness=.88;wood.metalness=0;wood.needsUpdate=true;
+function mesh(g,m,parent=scene,x=0,y=0,z=0){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);parent.add(o);o.castShadow=true;o.receiveShadow=true;return o}
+function box(w,h,d,m,p,x,y,z){return mesh(new THREE.BoxGeometry(w,h,d),m,p,x,y,z)}
+function sphere(r,m,p,x,y,z,sx=1,sy=1,sz=1){const o=mesh(new THREE.IcosahedronGeometry(r,1),m,p,x,y,z);o.scale.set(sx,sy,sz);return o}
+// Fine-scale, tileable wind ripples give the sea specular movement between large swells.
+function createOceanNormalMap(){
+ // Low-amplitude, non-periodic directional wind texture. No circular ripples.
+ const c=document.createElement('canvas');c.width=c.height=256;
+ const ctx=c.getContext('2d'),img=ctx.createImageData(256,256);
+ let seed=192837;const rnd=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296};
+ const noise=new Float32Array(256*256);for(let i=0;i<noise.length;i++)noise[i]=rnd();
+ for(let y=0;y<256;y++)for(let x=0;x<256;x++){
+  const at=(xx,yy)=>noise[((yy+256)%256)*256+(xx+256)%256];
+  const dx=(at(x+1,y)-at(x-1,y))*.17;
+  const dz=(at(x,y+1)-at(x,y-1))*.09;
+  const n=new THREE.Vector3(-dx,1,-dz).normalize(),i=(y*256+x)*4;
+  img.data[i]=(n.x*.5+.5)*255;img.data[i+1]=(n.y*.5+.5)*255;img.data[i+2]=(n.z*.5+.5)*255;img.data[i+3]=255;
+ }
+ ctx.putImageData(img,0,0);
+ const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(13,13);
+ tex.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);return tex;
+}
+const oceanNormalMap=createOceanNormalMap();
+// Dynamic ocean mesh with physically inspired reflective shading and crest foam.
+const N=matchMedia("(pointer:coarse)").matches?105:210, extent=1100;const seaGeo=new THREE.PlaneGeometry(extent,extent,N,N);seaGeo.rotateX(-Math.PI/2);const pos=seaGeo.attributes.position;const seaBase=new Float32Array(pos.array);const seaMat=new THREE.MeshStandardMaterial({color:'#255d9c',roughness:.095,metalness:.04,normalMap:oceanNormalMap,normalScale:new THREE.Vector2(.85,.85),flatShading:false,side:THREE.DoubleSide,vertexColors:true});const colors=[];for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);const c=new THREE.Color('#16416d');colors.push(c.r,c.g,c.b)}seaGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));// Physically inspired water shading: angle-dependent Fresnel reflectance, deep-water
+// absorption, moving sunlight glints and tiny wind ripples. No opaque painted overlay.
+seaMat.color.set('#23466d');
+seaMat.roughness=.31;
+seaMat.metalness=0;
+seaMat.normalScale.set(.12,.12);
+const waterUniforms={waterTime:{value:0},waterSunDirection:{value:new THREE.Vector3(-.45,.75,-.45).normalize()},waterSunColor:{value:new THREE.Color('#fff0cf')},waterNight:{value:0}};
+seaMat.onBeforeCompile=(shader)=>{
+ Object.assign(shader.uniforms,waterUniforms);
+ shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
+ varying vec3 vWaterWorldPosition;
+ varying vec3 vWaterWorldNormal;`);
+ shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>',`#include <worldpos_vertex>
+ vWaterWorldPosition=(modelMatrix*vec4(transformed,1.0)).xyz;
+ vWaterWorldNormal=normalize(mat3(modelMatrix)*normal);`);
+ shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
+ varying vec3 vWaterWorldPosition;
+ varying vec3 vWaterWorldNormal;
+ uniform float waterTime;
+ uniform float waterNight;
+ uniform vec3 waterSunDirection;
+ uniform vec3 waterSunColor;`);
+ shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+ // Smooth deep-water shading without sine-wave stripes, zigzags or rings.
+ vec3 eyeDir=normalize(cameraPosition-vWaterWorldPosition);
+ vec3 fineNormal=normalize(vWaterWorldNormal);
+ float nDotV=clamp(dot(fineNormal,eyeDir),0.0,1.0);
+ float fresnel=.025+.975*pow(1.0-nDotV,5.0);
+ vec3 deepSea=vec3(.003,.018,.053);
+ vec3 litSea=vec3(.009,.055,.112);
+ float slopeLight=clamp(fineNormal.y*.7+.3,0.0,1.0);
+ vec3 waterBase=mix(deepSea,litSea,slopeLight);
+ vec3 reflectedSky=mix(vec3(.015,.043,.077),vec3(.105,.18,.235),clamp(eyeDir.y*1.35+.2,0.0,1.0));
+ reflectedSky*=mix(1.0,.14,waterNight);
+ vec3 watery=mix(waterBase,reflectedSky,fresnel*.58);
+ float sunDot=max(dot(reflect(-waterSunDirection,fineNormal),eyeDir),0.0);
+ float glint=pow(sunDot,75.0)*.27+pow(sunDot,230.0)*.30;
+ glint*=1.0-waterNight;
+ outgoingLight=mix(outgoingLight,watery,.96)+waterSunColor*glint*.27;
+ #include <opaque_fragment>`);
+};
+const ocean=mesh(seaGeo,seaMat);ocean.position.y=-.85;
+// Warm atmospheric dome and layered storm cloud banks inspired by the reference painting.
+const skyDome=new THREE.Mesh(new THREE.SphereGeometry(1750,48,24),new THREE.ShaderMaterial({
+ side:THREE.BackSide,depthWrite:false,fog:false,
+ uniforms:{topColor:{value:new THREE.Color('#233a3b')},horizonColor:{value:new THREE.Color('#c6c7a4')},bottomColor:{value:new THREE.Color('#637b76')},skyTime:{value:0}},
+ vertexShader:`varying vec3 vPos;void main(){vPos=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+ fragmentShader:`varying vec3 vPos;uniform vec3 topColor,horizonColor,bottomColor;uniform float skyTime;
+ float hash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
+ float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
+ float fbm(vec3 p){float a=.5,v=0.;for(int i=0;i<5;i++){v+=a*noise(p);p=p*2.03+12.7;a*=.5;}return v;}
+ void main(){vec3 d=normalize(vPos);float h=d.y;vec3 col=mix(horizonColor,topColor,smoothstep(-.10,.65,h));col=mix(bottomColor,col,smoothstep(-.28,.03,h));
+ vec3 q=d*3.1+vec3(skyTime*.00035,0.,skyTime*.00019);
+ float billow=fbm(q*1.6+fbm(q*.75)*1.85);
+ float detail=fbm(q*5.8+vec3(13.));
+ float tower=smoothstep(.38,.66,billow+.15*sin(d.x*5.0))*smoothstep(.012,.19,h);
+ float distantTower=smoothstep(.37,.61,fbm(q*2.3+vec3(6.0,1.3,0.)))*smoothstep(.01,.10,h)* (1.-smoothstep(.47,.78,h));
+ tower=max(tower,distantTower*.7);
+ float underside=smoothstep(.32,.63,billow)*smoothstep(.025,.26,h);
+ float silver=smoothstep(.48,.78,billow+detail*.13)*smoothstep(.03,.32,h);
+ vec3 charcoal=vec3(.092,.145,.154),blueGrey=vec3(.24,.35,.35),silverGold=vec3(.74,.76,.65);
+ col=mix(col,blueGrey,underside*.65);
+ col=mix(col,charcoal,tower*.88);
+ float rim=clamp((silver-tower*.66)*1.8,0.,1.);
+ rim+=.26*smoothstep(.52,.72,billow)*smoothstep(.10,.29,h)*(1.-tower);
+ col=mix(col,silverGold,rim*.65);
+ float haze=1.-smoothstep(-.015,.16,abs(h));
+ col=mix(col,vec3(.66,.71,.60),haze*.45);
+ float lightGap=exp(-pow((d.x+.33)*5.0,2.0)-pow((h-.40)*8.0,2.0));
+ col+=vec3(.36,.34,.21)*lightGap*(1.-tower*.65);
+ float brush=fbm(q*33.0+vec3(1.7,4.2,0.));
+ col*=.95+.10*brush;
+ gl_FragColor=vec4(col,1.);}`
+}));scene.add(skyDome);
+// Thin mist banks add depth at the waterline, especially in rough weather.
+const mistBanks=new THREE.Group();scene.add(mistBanks);
+const mistGeo=new THREE.PlaneGeometry(160,26);
+const mistMat=new THREE.MeshBasicMaterial({color:'#b7c4b3',transparent:true,opacity:.095,depthWrite:false,side:THREE.DoubleSide,fog:true});
+for(let i=0;i<15;i++){const m=new THREE.Mesh(mistGeo,mistMat.clone());m.rotation.y=i*2.399;m.position.set(Math.cos(i*2.399)*(155+i*14),3+i%4,Math.sin(i*2.399)*(155+i*14));mistBanks.add(m)}
+const boat=new THREE.Group();scene.add(boat);const hull=new THREE.Group();boat.add(hull);
+// Hull pointed toward negative Z.
+const shape=new THREE.Shape();shape.moveTo(-3.1,3.8);shape.lineTo(-3.8,-2.8);shape.quadraticCurveTo(0,-7.5,3.8,-2.8);shape.lineTo(3.1,3.8);shape.quadraticCurveTo(0,5, -3.1,3.8);
+const hullGeo=new THREE.ExtrudeGeometry(shape,{depth:1.7,bevelEnabled:true,bevelThickness:.28,bevelSize:.23,bevelSegments:2,steps:1});hullGeo.rotateX(-Math.PI/2);hullGeo.translate(0,-.2,0);mesh(hullGeo,wood,hull);const deck=box(5.7,.18,9,wood,hull,0,.65,-.4);deck.rotation.y=0;box(.25,.45,8,trim,hull,-3.0,.62,-.2);box(.25,.45,8,trim,hull,3.0,.62,-.2);box(5.5,.35,.3,trim,hull,0,.65,3.8);
+// Deck seams, cannon ports, rope coils and deck furniture.
+const gold=mat('#997d52',.52);const seamMat=new THREE.MeshStandardMaterial({color:'#261c16',roughness:1});
+for(let x=-2.5;x<=2.5;x+=.65)box(.026,.025,8.2,seamMat,hull,x,.76,-.4);
+for(let z=-3.6;z<=3.5;z+=1.8)box(5.35,.024,.035,seamMat,hull,0,.77,z);
+for(let side of [-1,1]){
+ for(let z=-2.9;z<=2.9;z+=1.35){
+  box(.045,.34,.62,seamMat,hull,side*3.13,-.14,z);
+  const brass=box(.055,.035,.54,gold,hull,side*3.17,-.16,z);
+ }
+}
+const ropeMat=new THREE.MeshStandardMaterial({color:'#b6a081',roughness:1});
+for(const [x,z] of [[-2,1.7],[2,2.4],[-2,-2.6]]){
+ const rope=new THREE.Mesh(new THREE.TorusGeometry(.47,.055,6,24),ropeMat);rope.rotation.x=Math.PI/2;rope.position.set(x,.86,z);hull.add(rope);
+}
+box(2.6,.95,2.0,darkWood,hull,0,1.1,3.0);
+for(let j=0;j<3;j++)box(2.4,.11,.12,gold,hull,0,1.6+j*.18,3.9);
+// Three-masted tall ship: layered, warm parchment square sails, yards and rigging.
+const mastWood=mat('#34271e',.82),parchment=mat('#d7cab2');
+const sailCanvas=document.createElement('canvas');sailCanvas.width=256;sailCanvas.height=256;
+const sc=sailCanvas.getContext('2d');sc.fillStyle='#d7c8ac';sc.fillRect(0,0,256,256);
+for(let i=0;i<1600;i++){const x=Math.random()*256,y=Math.random()*256;sc.fillStyle=i%3===0?'rgba(255,221,146,.10)':'rgba(62,43,27,.065)';sc.fillRect(x,y,3+Math.random()*18,1+Math.random()*10)}
+for(let i=0;i<10;i++){sc.strokeStyle='rgba(92,61,36,.13)';sc.beginPath();sc.moveTo(0,i*27);sc.quadraticCurveTo(128,i*27+10,256,i*27);sc.stroke()}
+const sailTexture=new THREE.CanvasTexture(sailCanvas);sailTexture.colorSpace=THREE.SRGBColorSpace;
+const canvasMat=new THREE.MeshStandardMaterial({map:sailTexture,color:'#e9dfc9',side:THREE.DoubleSide,roughness:1,transparent:true,opacity:.96});
+function rigLine(x1,y1,z1,x2,y2,z2,r=.035){const a=new THREE.Vector3(x1,y1,z1),b=new THREE.Vector3(x2,y2,z2);const o=mesh(new THREE.CylinderGeometry(r,r,a.distanceTo(b),5),mastWood,hull);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.sub(a).normalize());}
+function squareSail(z,y,w,h){const shape=new THREE.BufferGeometry();const vertices=new Float32Array([-w/2,y+h/2,z, w/2,y+h/2,z, -w*.45,y-h/2,z+.85, w*.45,y-h/2,z+.85,0,y,z+1.2]);shape.setAttribute('position',new THREE.BufferAttribute(vertices,3));shape.setAttribute('uv',new THREE.Float32BufferAttribute([0,1,1,1,.04,0,.96,0,.5,.5],2));shape.setIndex([0,2,4,0,4,1,1,4,3,2,3,4]);shape.computeVertexNormals();mesh(shape,canvasMat,hull);box(w+.4,.16,.18,mastWood,hull,0,y+h/2,z);box(w*.91,.10,.15,mastWood,hull,0,y-h/2,z+.8);}
+for(const [z,height,width] of [[-3.1,23,10],[1.2,27,12],[4.2,19,8]]){
+mesh(new THREE.CylinderGeometry(.12,.24,height,9),mastWood,hull,0,height/2+.8,z);
+for(let j=0;j<3;j++){const h=5+j*5.2;const w=width*(1-j*.17);squareSail(z,h,w,4.8);}
+rigLine(0,height+.7,z,-3.3,.8,z-2);rigLine(0,height+.7,z,3.3,.8,z-2);
+}
+// Long bowsprit and stern rails.
+const bowsprit=mesh(new THREE.CylinderGeometry(.10,.18,10,7),mastWood,hull,0,2,-8);bowsprit.rotation.x=Math.PI/2.8;
+for(let side of [-1,1]){for(let z=-4;z<=3;z+=1.7){box(.11,1.3,.12,gold,hull,side*2.9,1.5,z)}box(.12,.12,8,gold,hull,side*2.9,2.1,-.4)}
+// Sailor figures.
+for(const [x,z,c] of [[-1.6,2,'#d1a26b'],[.2,2.5,'#8bb3b5'],[1.8,2.1,'#c89dbe']]){const p=new THREE.Group();hull.add(p);p.position.set(x,.7,z);mesh(new THREE.CylinderGeometry(.43,.6,1.25,7),mat(c),p,0,.8,0);sphere(.48,mat('#eac9a4'),p,0,1.7,0);sphere(.55,mat('#547b8e'),p,0,2.08,0,1,.3,1)}
+// Sun disk and watercolor cloud puffs.
+const starsGeometry=new THREE.BufferGeometry();const starPositions=[];
+for(let i=0;i<550;i++){const az=i*2.39996,el=.12+((i*37)%97)/97*1.35,r=1250;starPositions.push(Math.cos(az)*Math.cos(el)*r,Math.sin(el)*r,Math.sin(az)*Math.cos(el)*r);}
+starsGeometry.setAttribute('position',new THREE.Float32BufferAttribute(starPositions,3));
+const stars=new THREE.Points(starsGeometry,new THREE.PointsMaterial({color:'#e6e9e7',size:3.5,sizeAttenuation:false,transparent:true,opacity:.0,depthWrite:false}));scene.add(stars);
+const sun=mesh(new THREE.SphereGeometry(30,24,16),new THREE.MeshBasicMaterial({color:'#ffd083'}),scene,-320,180,-650);
+const cloudMats=['#1c485a','#426b75','#a47d67'].map(c=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.92,depthWrite:false}));
+for(let i=0;i<0;i++){const x=(Math.random()-.5)*1100,z=-150-Math.random()*800,y=75+Math.random()*100;const g=new THREE.Group();scene.add(g);g.position.set(x,y,z);for(let j=0;j<4;j++)sphere(10+Math.random()*12,cloudMats[i%3],g,(j-1.5)*17,Math.random()*5,0,1.8,.33,.65)}
+// Islands, rocks, palms and lighthouse.
+const islands=[];function island(x,z,r,lighthouse=false){const group=new THREE.Group();scene.add(group);group.position.set(x,-.2,z);sphere(r,sand,group,0,-2,0,1,.2,.85);sphere(r*.7,mat('#6cb889'),group,0,-.5,0,1,.16,.85);for(let k=0;k<Math.max(3,Math.round(r/6));k++){const a=k*2.399,rr=r*.52,px=Math.cos(a)*rr,pz=Math.sin(a)*rr;const palm=new THREE.Group();group.add(palm);palm.position.set(px,.1,pz);mesh(new THREE.CylinderGeometry(.22,.36,6,6),mat('#9a7050'),palm,0,3,0);for(let j=0;j<6;j++){const fr=mesh(new THREE.ConeGeometry(2.7,7,3),leaf,palm,Math.cos(j*Math.PI/3)*2.3,6,Math.sin(j*Math.PI/3)*2.3);fr.rotation.z=Math.PI/2;fr.rotation.y=j*Math.PI/3}}if(lighthouse){mesh(new THREE.CylinderGeometry(1.2,1.8,14,10),white,group,0,7,0);mesh(new THREE.CylinderGeometry(1.8,1.8,1.1,10),mat('#d88a70'),group,0,14,0);mesh(new THREE.ConeGeometry(2.2,2.8,10),mat('#d66e58'),group,0,16,0);sphere(1.5,new THREE.MeshBasicMaterial({color:'#fff3b0'}),group,0,14.9,0)}islands.push({x,z,r})}
+// Open ocean: no cartoon islands.
+for(let i=0;i<0;i++){const x=(Math.random()-.5)*1100,z=(Math.random()-.5)*1100;if(Math.hypot(x,z)<90)continue;sphere(3+Math.random()*7,rock,scene,x,-.3,z,1,.6,1.2)}
+// Small patches of painted foam, animated with water.
+const foam=[];const foamMat=new THREE.MeshBasicMaterial({color:'#e1ffff',transparent:true,opacity:.62,side:THREE.DoubleSide,depthWrite:false});for(let i=0;i<90;i++){const o=mesh(new THREE.PlaneGeometry(2+Math.random()*9,.16+Math.random()*.55),foamMat);o.rotation.x=-Math.PI/2;foam.push(o)}
+let chaseTime=0,boostFuel=100,gameOver=false,sinking=false,sinkTimer=0;
+const scoreKey='drift-escape-abyss-best-survival-v1';
+let bestSurvival=0,finalSurvival=0;
+try {bestSurvival=Math.max(0,Number(localStorage.getItem(scoreKey))||0);}catch(e){}
+function scoreClock(seconds){const n=Math.floor(seconds);return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');}
+function updateBestDisplay(){document.getElementById('bestTime').textContent=scoreClock(bestSurvival);}
+function recordSurvival(){
+ finalSurvival=chaseTime;
+ const isRecord=finalSurvival>bestSurvival;
+ if(isRecord){bestSurvival=finalSurvival;try{localStorage.setItem(scoreKey,String(bestSurvival));}catch(e){}}
+ updateBestDisplay();return isRecord;
+}
+updateBestDisplay();
+const whirlpool=new THREE.Group();scene.add(whirlpool);whirlpool.visible=false;
+const vortexRings=[];
+for(let i=0;i<22;i++){
+ const radius=3+i*1.28;
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(radius,.25+(i%3)*.12,6,100),
+ new THREE.MeshBasicMaterial({color:i%3===0?'#c9ffff':i%3===1?'#087a94':'#0b344b',transparent:true,opacity:.78,depthWrite:false}));
+ ring.rotation.x=-Math.PI/2;ring.position.y=-i*.37;whirlpool.add(ring);vortexRings.push(ring);
+}
+const funnelGeo=new THREE.CylinderGeometry(29,2.2,12,80,12,true);
+const funnel=new THREE.Mesh(funnelGeo,new THREE.MeshPhongMaterial({color:'#063b53',transparent:true,opacity:.78,side:THREE.DoubleSide,shininess:85}));
+funnel.position.y=-6.5;whirlpool.add(funnel);
+
+// Hidden kraken ambush. A fresh position is chosen every voyage.
+// Warm ship lanterns, visible in dusk and darkness.
+const lanterns=[];
+for(const [lx,lz] of [[0,6.1]]){
+ const fixture=new THREE.Group();fixture.position.set(lx,6.6,lz);boat.add(fixture);
+ const iron=new THREE.MeshStandardMaterial({color:'#292a29',roughness:.76});
+ const glass=new THREE.MeshBasicMaterial({color:'#ffc45b',transparent:true,opacity:.88});
+ const frame=new THREE.Mesh(new THREE.CylinderGeometry(.46,.46,1.35,8,1,true),iron);fixture.add(frame);
+ const glow=new THREE.Mesh(new THREE.SphereGeometry(.39,10,8),glass);fixture.add(glow);
+ const cap=new THREE.Mesh(new THREE.ConeGeometry(.72,.52,8),iron);cap.position.y=.91;fixture.add(cap);
+ const base=new THREE.Mesh(new THREE.CylinderGeometry(.56,.56,.16,8),iron);base.position.y=-.72;fixture.add(base);
+ const light=new THREE.PointLight('#ffbd62',0,90,2);fixture.add(light);
+ lanterns.push({fixture,light,glow});
+}
+const kraken=new THREE.Group();scene.add(kraken);
+function makeSkinTexture(){
+ const c=document.createElement('canvas');c.width=256;c.height=256;const g=c.getContext('2d');
+ g.fillStyle='#534658';g.fillRect(0,0,256,256);let seed=93;
+ for(let i=0;i<5000;i++){seed=(seed*1664525+1013904223)>>>0;const x=(seed/4294967296)*256;seed=(seed*1664525+1013904223)>>>0;const y=(seed/4294967296)*256;
+ g.fillStyle=i%3?'rgba(8,13,21,.07)':'rgba(188,153,169,.08)';g.beginPath();g.arc(x,y,1+(i%6),0,Math.PI*2);g.fill()}
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+const skinTexture=makeSkinTexture();
+// Naturalistic cephalopod mantle, ridged brows, beak and articulated tapering arms.
+const skinMat=new THREE.MeshStandardMaterial({color:'#81747b',map:skinTexture,roughness:.49,metalness:.02});
+const undersideMat=new THREE.MeshStandardMaterial({color:'#9b8180',roughness:.63});
+const suckerMat=new THREE.MeshStandardMaterial({color:'#b7a09b',roughness:.74,side:THREE.DoubleSide});
+// Anatomical squid-like mantle: tapered, swept-back hood instead of a round ball.
+const mantleShape=new THREE.BufferGeometry();
+const verts=[],indices=[],rings=19,sides=32;
+for(let j=0;j<=rings;j++){
+ const u=j/rings;
+ const width=(1.5+7.9*Math.pow(Math.sin(Math.PI*u),.85))*(1-.20*u);
+ const height=(1.2+6.0*Math.sin(Math.PI*u));
+ const z=-8+u*27;
+ for(let i=0;i<=sides;i++){
+  const a=i/sides*Math.PI*2;
+  verts.push(Math.cos(a)*width,3+Math.sin(a)*height+u*u*4,z);
+ }
+}
+for(let j=0;j<rings;j++)for(let i=0;i<sides;i++){
+ const n=j*(sides+1)+i;indices.push(n,n+1,n+sides+1,n+1,n+sides+2,n+sides+1);
+}
+mantleShape.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+mantleShape.setIndex(indices);mantleShape.computeVertexNormals();
+const krakenBody=new THREE.Mesh(mantleShape,new THREE.MeshStandardMaterial({color:'#71636c',map:skinTexture,roughness:.67,side:THREE.DoubleSide}));
+krakenBody.castShadow=true;kraken.add(krakenBody);krakenBody.visible=false;
+const finMat=new THREE.MeshStandardMaterial({color:'#69535e',roughness:.8,side:THREE.DoubleSide});
+for(const side of [-1,1]){
+ const fin=new THREE.Mesh(new THREE.ConeGeometry(5.3,13,3),finMat);
+ fin.position.set(side*5.5,4,12);fin.rotation.z=side*.55;fin.rotation.x=.6;kraken.add(fin);fin.visible=false;
+}
+const eyeWhite=new THREE.MeshStandardMaterial({color:'#c8a77b',roughness:.3});
+const irisMat=new THREE.MeshStandardMaterial({color:'#a17c38',roughness:.25,metalness:.16});
+const pupilMat=new THREE.MeshStandardMaterial({color:'#070c0c',roughness:.09});
+for(const side of [-1,1]){
+ const eye=new THREE.Group();eye.position.set(side*6.4,4.2,-5.5);
+ eye.rotation.y=side*.36;kraken.add(eye);eye.visible=false;
+ const socket=new THREE.Mesh(new THREE.SphereGeometry(2.55,22,16),skinMat);socket.scale.z=.7;eye.add(socket);
+ const sclera=new THREE.Mesh(new THREE.SphereGeometry(1.62,24,16),eyeWhite);sclera.position.z=-1.42;eye.add(sclera);
+ const iris=new THREE.Mesh(new THREE.SphereGeometry(.91,22,16),irisMat);iris.scale.z=.36;iris.position.z=-2.83;eye.add(iris);
+ const pupil=new THREE.Mesh(new THREE.SphereGeometry(.43,20,14),pupilMat);pupil.scale.z=.32;pupil.position.z=-3.17;eye.add(pupil);
+ const glint=new THREE.Mesh(new THREE.SphereGeometry(.13,10,8),new THREE.MeshBasicMaterial({color:'#fff2d7'}));glint.position.set(-.24,.32,-3.37);eye.add(glint);
+ const brow=new THREE.Mesh(new THREE.SphereGeometry(1,20,12),skinMat);brow.scale.set(2.8,.75,1.15);brow.position.set(0,1.6,-.9);eye.add(brow);
+}
+const beak=new THREE.Mesh(new THREE.ConeGeometry(1.65,4,9),new THREE.MeshStandardMaterial({color:'#302729',roughness:.42}));
+beak.rotation.x=Math.PI;beak.position.set(0,-3.5,-7.5);kraken.add(beak);beak.visible=false;
+const krakenArms=[];
+const armCylinder=new THREE.CylinderGeometry(1,1,1,12,1,true);
+const suckerGeometry=new THREE.TorusGeometry(.34,.11,6,10);
+for(let arm=0;arm<8;arm++){
+ const angle=arm*Math.PI/4,segments=[],suckers=[],joints=[];
+ for(let j=0;j<28;j++){
+  const radius=1.65*Math.pow(1-j/28,1.0)+.12;
+  const seg=new THREE.Mesh(armCylinder,skinMat);
+  seg.castShadow=true;kraken.add(seg);segments.push(seg);
+  const joint=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),skinMat);
+  joint.scale.setScalar(radius);joint.castShadow=true;kraken.add(joint);joints.push(joint);
+  if(j<27){
+   for(const side of [-1,1]){
+    const sucker=new THREE.Mesh(suckerGeometry,suckerMat);
+    sucker.scale.setScalar(Math.max(.28,radius*.8));
+    kraken.add(sucker);suckers.push({mesh:sucker,j,side});
+   }
+  }
+ }
+ krakenArms.push({angle,segments,joints,suckers});
+}
+const armPoints=[];
+function positionKrakenArms(time){
+ const grabbing=krakenState==='eating';
+ const emerging=krakenState==='rising';
+ const emerge=emerging?THREE.MathUtils.smoothstep(krakenTimer,0,2.1):1;
+ const grabBlend=grabbing?THREE.MathUtils.smoothstep(krakenTimer,0,.95):0;
+ krakenArms.forEach(({angle,segments,joints,suckers},i)=>{
+  const pts=[];
+  for(let j=0;j<=28;j++){
+   const u=j/28,d=3+Math.sin(u*Math.PI*.84)*35,phase=time*.78-i*.72-j*.12;
+   pts.push(new THREE.Vector3(
+    Math.cos(angle)*d+Math.sin(phase)*(.3+j*.16),
+    -3+Math.sin(u*Math.PI)*35+Math.pow(u,3)*8+Math.sin(phase)*2.2,
+    Math.sin(angle)*d+Math.cos(phase)*(.3+j*.16)
+   ));
+   if(emerging){pts[j].y-= (1-emerge)*36;pts[j].x*=.55+.45*emerge;pts[j].z*=.55+.45*emerge;}
+  }
+  if(grabbing){
+   // The tentacles wrap in real 3D spirals around the hull and deck,
+   // not merely point toward the ship. The coil follows the ship as it sinks.
+   kraken.updateMatrixWorld(true);
+   boat.updateMatrixWorld(true);
+   const base=pts[0].clone();
+   const [side,shipZ]=grabTargetOffsets[i];
+   const handed=side<0?-1:1;
+   const entryLocal=new THREE.Vector3(handed*3.4,-1.0,shipZ);
+   const entry=kraken.worldToLocal(boat.localToWorld(entryLocal.clone()));
+   const coils=[];
+   for(let j=0;j<=28;j++){
+    const u=j/28;
+    const v=THREE.MathUtils.clamp((u-.31)/.69,0,1);
+    let point;
+    if(u<.31){
+     // Approach the rail from outside the ship.
+     const k=u/.31;
+     point=base.clone().lerp(entry,k);
+     point.y+=Math.sin(k*Math.PI)*3.3;
+    }else{
+     // Two tight loops: beneath the keel, up the side, across the deck,
+     // and back around. Different arms grip different ship sections.
+     const theta=handed*(Math.PI+v*Math.PI*3.8)+i*.11;
+     const rx=3.0-v*.25,ry=2.45-v*.18;
+     const local=new THREE.Vector3(rx*Math.cos(theta),.15+ry*Math.sin(theta),shipZ+v*.38);
+     point=kraken.worldToLocal(boat.localToWorld(local));
+    }
+    coils.push(point);
+   }
+   for(let j=1;j<=28;j++){
+    const u=j/28;
+    const progressive=THREE.MathUtils.smoothstep(krakenTimer, .18+u*.92, .75+u*.92);
+    pts[j].lerp(coils[j],progressive);
+   }
+  }
+  for(let j=0;j<28;j++){
+   const a=pts[j],b=pts[j+1],diff=new THREE.Vector3().subVectors(b,a);
+   const r1=1.65*Math.pow(1-j/28,1.0)+.12;
+   const r2=1.65*Math.pow(1-(j+1)/28,1.0)+.12;
+   const segment=segments[j];
+   segment.position.copy(a).add(b).multiplyScalar(.5);
+   segment.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),diff.clone().normalize());
+   segment.scale.set((r1+r2)*.5,diff.length()*1.12,(r1+r2)*.5);
+   joints[j].position.copy(a);
+   joints[j].scale.setScalar(r1);
+  }
+  for(const {mesh,j,side} of suckers){
+   const a=pts[j],b=pts[j+1],tangent=new THREE.Vector3().subVectors(b,a).normalize();
+   const radial=new THREE.Vector3(Math.cos(angle),0,Math.sin(angle));
+   const under=new THREE.Vector3().crossVectors(tangent,radial).normalize();
+   if(under.y>0)under.negate();
+   const sideVec=new THREE.Vector3().crossVectors(tangent,under).normalize();
+   mesh.position.copy(a).lerp(b,.5).addScaledVector(under,.72).addScaledVector(sideVec,side*.66);
+   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),under);
+  }
+ });
+}
+const krakenShadow=new THREE.Mesh(new THREE.CircleGeometry(16,48),new THREE.MeshBasicMaterial({color:'#061c35',transparent:true,opacity:.38,depthWrite:false,side:THREE.DoubleSide}));
+krakenShadow.rotation.x=-Math.PI/2;scene.add(krakenShadow);
+const attackFoam=new THREE.Mesh(new THREE.RingGeometry(9,18,64),new THREE.MeshBasicMaterial({color:'#a6d5ee',transparent:true,opacity:.26,depthWrite:false,side:THREE.DoubleSide}));
+attackFoam.rotation.x=-Math.PI/2;scene.add(attackFoam);
+// Layered painted-water splash: droplets, spray fans and expanding foam rings.
+const splashGroup=new THREE.Group();scene.add(splashGroup);splashGroup.visible=false;
+const splashDrops=[],splashSeed=[];
+const splashDropMat=new THREE.MeshStandardMaterial({color:'#cfe6f3',roughness:.85,transparent:true,opacity:.94});
+const splashGeo=new THREE.IcosahedronGeometry(1,0);
+let seedSplash=14623;const splashRandom=()=>{seedSplash=(seedSplash*1664525+1013904223)>>>0;return seedSplash/4294967296};
+for(let i=0;i<230;i++){
+ const m=new THREE.Mesh(splashGeo,splashDropMat);
+ const angle=splashRandom()*Math.PI*2,spread=3+splashRandom()*19;
+ const speed=12+splashRandom()*30,up=10+splashRandom()*30;
+ m.scale.set(.25+splashRandom()*.65,.7+splashRandom()*2.2,.25+splashRandom()*.65);
+ splashGroup.add(m);splashDrops.push(m);
+ splashSeed.push({angle,spread,speed,up,delay:splashRandom()*.28});
+}
+const splashRings=[];
+for(let i=0;i<4;i++){
+ const ring=new THREE.Mesh(new THREE.RingGeometry(1,1.17,90),new THREE.MeshBasicMaterial({color:i%2?'#a7d7f1':'#e3f2fa',transparent:true,opacity:.0,side:THREE.DoubleSide,depthWrite:false}));
+ ring.rotation.x=-Math.PI/2;splashGroup.add(ring);splashRings.push(ring);
+}
+let splashTime=-1,splashCenter=new THREE.Vector3();
+function beginSplash(){
+ splashTime=0;splashCenter.set(boat.position.x,0,boat.position.z);splashGroup.visible=true;
+}
+function updateSplash(dt,time){
+ if(splashTime<0)return;
+ splashTime+=dt;
+ splashGroup.position.set(splashCenter.x,waveAt(splashCenter.x,splashCenter.z,time)-.4,splashCenter.z);
+ for(let i=0;i<splashDrops.length;i++){
+  const p=splashSeed[i],age=splashTime-p.delay;
+  const m=splashDrops[i];m.visible=age>=0&&age<2.4;
+  if(!m.visible)continue;
+  const outward=p.spread+age*p.speed*.67;
+  m.position.set(Math.cos(p.angle)*outward,age*p.up-age*age*17,Math.sin(p.angle)*outward);
+  m.rotation.set(age*1.7,i*.6,age*.8);
+ }
+ splashRings.forEach((ring,i)=>{
+  const age=splashTime-i*.19;
+  ring.visible=age>=0&&age<2.7;
+  ring.scale.setScalar(5+Math.max(0,age)*23);
+  ring.material.opacity=Math.max(0,.73-age*.28);
+  ring.position.y=.2+i*.08;
+ });
+ if(splashTime>3.1){splashTime=-1;splashGroup.visible=false;}
+}
+let krakenSpot=new THREE.Vector3(),krakenState='hidden',krakenTimer=0,caughtBy='kraken';
+let krakenHuntDelay=0,krakenDash=0,krakenDashCooldown=0;
+let grabStart=new THREE.Vector3(),grabHeading=0;
+const shadowTrail=[];
+for(let i=0;i<5;i++){
+ const mesh=new THREE.Mesh(new THREE.CircleGeometry(13,40),new THREE.MeshBasicMaterial({color:'#071b24',transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));
+ mesh.rotation.x=-Math.PI/2;scene.add(mesh);shadowTrail.push(mesh);
+}
+const grabTargetOffsets=[[-3,-3],[3,-3],[-3,2],[3,2],[-2,5],[2,5],[-2,-6],[2,-6]];
+
+const krakenAlert=document.createElement('div');krakenAlert.style.cssText='position:absolute;top:85px;left:50%;transform:translateX(-50%);padding:9px 18px;border-radius:12px;background:#132e42dd;color:#ffe2b0;font:bold 14px Georgia,serif;pointer-events:none;z-index:10;text-align:center';krakenAlert.textContent='THE KRAKEN LURKS BELOW';document.body.appendChild(krakenAlert);krakenAlert.style.display='none';
+function respawnKraken(){
+ const angle=Math.random()*Math.PI*2;
+ const radius=240+Math.random()*310;
+ krakenSpot.set(Math.sin(angle)*radius,-35,Math.cos(angle)*radius);
+ kraken.position.copy(krakenSpot);
+ kraken.visible=false;krakenShadow.visible=false;attackFoam.visible=false;splashTime=-1;splashGroup.visible=false;krakenState='hidden';krakenTimer=0;krakenHuntDelay=4;krakenDash=0;krakenDashCooldown=0;shadowTrail.forEach(m=>m.visible=false);krakenAlert.textContent='THE KRAKEN LURKS BELOW';
+}
+function triggerKraken(){
+ if(krakenState!=='hidden'||sinking||!started)return;
+ krakenState='rising';krakenTimer=0;kraken.position.set(boat.position.x,-42,boat.position.z);kraken.visible=true;audioBurst('roar',1);krakenAlert.textContent='TENTACLES RISING FROM BENEATH YOUR SHIP!';
+}
+function resetChase(){finalSurvival=0;krakenAlert.style.display='block';started=true;gameOver=false;chaseTime=0;boostFuel=100;velocity=0;heading=0;sinking=false;sinkTimer=0;caughtBy='kraken';whirlpool.visible=false;boat.scale.set(1,1,1);boat.rotation.set(0,0,0);hull.rotation.set(0,0,0);floatY=0;rollAngle=0;pitchAngle=0;boat.position.set(0,0,0);boat.rotation.order="YXZ";boat.rotation.set(0,0,0);boat.quaternion.identity();hull.quaternion.identity();distance=0;respawnKraken();document.getElementById('center').style.display='none';}
+function endChase(){krakenAlert.style.display='none';started=false;gameOver=true;document.getElementById('center').style.display='flex';document.querySelector('#panel h1').textContent='CAUGHT!';document.querySelector('#panel p').textContent='The Kraken dragged your ship beneath the waves. You survived '+scoreClock(finalSurvival)+'. Your best time is '+scoreClock(bestSurvival)+'. '+(Math.abs(finalSurvival-bestSurvival)<.01?'NEW HIGH SCORE!':'Can you beat your high score next time?');document.getElementById('start').textContent='SAIL AGAIN';}
+// Environmental audio is synthesized locally with Web Audio. Wave envelopes are
+// tied to the SAME spatial wavelengths and temporal phases as the 3D ocean.
+const sound={ctx:null,master:null,compressor:null,ocean:null,breaker:null,undertow:null,wind:null,rain:null,rumble:null,heartbeat:null,noise:null,enabled:true,lastCreak:0,lastSplash:0,lastWarning:0,lastHeartbeat:0,attackPlayed:false};
+function audioInit(){
+ if(sound.ctx)return;
+ const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+ const c=sound.ctx=new AC();
+ const limiter=sound.compressor=c.createDynamicsCompressor();limiter.threshold.value=-15;limiter.knee.value=16;limiter.ratio.value=5;limiter.attack.value=.005;limiter.release.value=.28;limiter.connect(c.destination);
+ sound.master=c.createGain();sound.master.gain.value=.76;sound.master.connect(limiter);
+ const buffer=c.createBuffer(1,c.sampleRate*5,c.sampleRate),data=buffer.getChannelData(0);
+ let seed=27443;for(let i=0;i<data.length;i++){seed=(seed*1664525+1013904223)>>>0;data[i]=(seed/2147483648-1)*.72;}
+ sound.noise=buffer;
+ function loopNoise(type,freq,q,vol){
+  const source=c.createBufferSource();source.buffer=buffer;source.loop=true;
+  const filter=c.createBiquadFilter();filter.type=type;filter.frequency.value=freq;filter.Q.value=q;
+  const gain=c.createGain();gain.gain.value=vol;
+  source.connect(filter);filter.connect(gain);gain.connect(sound.master);source.start();return {source,filter,gain};
+ }
+ // Three ocean layers: rolling surf, foamy high-frequency wash, deep undertow.
+ sound.ocean=loopNoise('lowpass',420,.55,.10);
+ sound.breaker=loopNoise('bandpass',1250,.62,.015);
+ sound.undertow=loopNoise('lowpass',120,.45,.075);
+ sound.wind=loopNoise('bandpass',750,.42,.035);
+ sound.rain=loopNoise('highpass',2800,.6,0);
+ sound.rumble=loopNoise('lowpass',85,1.4,0);
+ sound.heartbeat=loopNoise('bandpass',63,2.5,0);
+}
+function audioBurst(kind,volume=1,pan=0){
+ if(!sound.ctx||!sound.enabled||sound.ctx.state!=='running')return;
+ const c=sound.ctx,now=c.currentTime;
+ const settings={splash:[1550,1.9,1.2,'bandpass'],thunder:[110,2.8,.85,'lowpass'],roar:[180,2.4,1.15,'lowpass'],creak:[480,.52,.18,'bandpass'],dash:[630,1.1,.8,'bandpass'],grab:[250,1.65,1.2,'lowpass'],warning:[105,.6,.36,'lowpass'],impact:[90,2.1,1.3,'lowpass']};
+ const [frequency,duration,level,filterType]=settings[kind]||settings.splash;
+ const src=c.createBufferSource();src.buffer=sound.noise;
+ const filter=c.createBiquadFilter();filter.type=filterType;filter.Q.value=kind==='warning'?4:.7;
+ filter.frequency.setValueAtTime(frequency,now);
+ filter.frequency.exponentialRampToValueAtTime(Math.max(45,frequency*(kind==='splash'?.33:.38)),now+duration);
+ const gain=c.createGain();gain.gain.setValueAtTime(.0001,now);
+ gain.gain.exponentialRampToValueAtTime(Math.max(.001,level*volume*.48),now+(kind==='splash'?.12:.045));
+ gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+ const stereo=c.createStereoPanner?c.createStereoPanner():null;
+ src.connect(filter);filter.connect(gain);
+ if(stereo){stereo.pan.value=Math.max(-1,Math.min(1,pan));gain.connect(stereo);stereo.connect(sound.master)}else gain.connect(sound.master);
+ src.start(now);src.stop(now+duration+.04);
+ // Kraken calls are deep, pitch-sliding underwater notes, not just broadband noise.
+ if(['roar','dash','grab','warning','impact'].includes(kind)){
+  const osc=c.createOscillator(),og=c.createGain();osc.type='sine';
+  const f=kind==='dash'?92:kind==='warning'?52:kind==='grab'?48:kind==='impact'?39:66;
+  osc.frequency.setValueAtTime(f*1.55,now);osc.frequency.exponentialRampToValueAtTime(f*.66,now+Math.min(duration,1.8));
+  og.gain.setValueAtTime(.0001,now);og.gain.exponentialRampToValueAtTime(.15*volume,now+.07);og.gain.exponentialRampToValueAtTime(.0001,now+Math.min(duration,2));
+  osc.connect(og);if(stereo)og.connect(stereo);else og.connect(sound.master);
+  osc.start(now);osc.stop(now+Math.min(duration,2)+.02);
+ }
+}
+function audioTick(dt,t){
+ if(!sound.ctx||!sound.enabled||sound.ctx.state!=='running')return;
+ const c=sound.ctx,now=c.currentTime;
+ const storm=weather==='storm',raining=storm||weather==='rain';
+ const motion=started?Math.min(1,Math.abs(velocity)/105):0;
+ const waveFactor=Math.min(1,waveHeight/20);
+ // Match the spatial wave equations: u=x*.020+z*.007+t*.72,
+ // v=z*.027-x*.012+t*.94, and w=(x+z)*.014+t*.53.
+ const x=boat.position.x,z=boat.position.z;
+ const u=x*.020+z*.007+t*.72,v=z*.027-x*.012+t*.94,w=(x+z)*.014+t*.53;
+ const crest=Math.max(0,Math.sin(u))**5*.58+Math.max(0,Math.sin(v))**6*.32;
+ const longWave=.5+.5*Math.sin(u-.8),crossWave=.5+.5*Math.sin(v-1.2),undertow=.5+.5*Math.sin(w+.6);
+ const surf=Math.min(1,.14+crest*.85+longWave*.36+crossWave*.18);
+ const breakAmount=Math.min(1,Math.max(0,crest-.12)*1.9+motion*.22);
+ sound.ocean.gain.gain.setTargetAtTime(.07+(.14+.13*waveFactor)*surf+motion*.035,now,.13);
+ sound.ocean.filter.frequency.setTargetAtTime(280+waveFactor*240+surf*390,now,.18);
+ sound.breaker.gain.gain.setTargetAtTime((.018+waveFactor*.16)*breakAmount,now,.1);
+ sound.breaker.filter.frequency.setTargetAtTime(850+waveFactor*650+crest*800,now,.12);
+ sound.undertow.gain.gain.setTargetAtTime(.035+waveFactor*.07*undertow,now,.35);
+ sound.wind.gain.gain.setTargetAtTime(.024+(storm?.14:.025)+motion*.065,now,.4);
+ sound.wind.filter.frequency.setTargetAtTime(520+motion*550+(storm?350:0),now,.45);
+ sound.rain.gain.gain.setTargetAtTime(raining?(storm?.14:.07):0,now,.5);
+ // Distance-based threat audio: low frequencies carry through water and get
+ // louder, brighter and pulse more quickly as the creature approaches.
+ const gap=started?Math.hypot(boat.position.x-kraken.position.x,boat.position.z-kraken.position.z):999;
+ const near=started?Math.max(0,Math.min(1,(270-gap)/250)):0;
+ const dash=krakenDash>0&&krakenState==='hidden';
+ const pulseHz=.45+near*2.2+(dash?2.4:0);
+ const pulse=.4+.6*Math.pow(Math.max(0,Math.sin(t*Math.PI*2*pulseHz)),2);
+ const attack=krakenState==='rising'||krakenState==='hunting'||krakenState==='eating';
+ sound.rumble.gain.gain.setTargetAtTime(near*(.04+near*.17)*pulse+(attack?.13:0),now,.18);
+ sound.rumble.filter.frequency.setTargetAtTime(55+near*115+(dash?90:0),now,.18);
+ sound.heartbeat.gain.gain.setTargetAtTime(near*near*.10*pulse,now,.15);
+ sound.heartbeat.filter.frequency.setTargetAtTime(48+near*38,now,.2);
+ if(started&&near>.35&&t-sound.lastWarning>Math.max(2.3,7-near*4.4)&&krakenState==='hidden'){
+  sound.lastWarning=t;audioBurst('warning',.25+near*.38);
+ }
+ if(started&&Math.abs(velocity)>30&&t-sound.lastCreak>3.8){sound.lastCreak=t;audioBurst('creak',.25+waveFactor*.25);}
+ // Local crest break: only occasional distinct close splashes, layered over surf.
+ if(started&&crest>.53&&t-sound.lastSplash>2.1){sound.lastSplash=t;audioBurst('splash',.12+waveFactor*.18);}
+}
+const audioButton=document.getElementById('audioControl');
+function updateAudioButton(){audioButton.textContent=sound.enabled?'🔊 Sound: ON':'🔇 Sound: OFF';audioButton.setAttribute('aria-pressed',String(sound.enabled));}
+audioButton.addEventListener('click',async()=>{sound.enabled=!sound.enabled;updateAudioButton();if(sound.enabled){audioInit();if(sound.ctx)await sound.ctx.resume();sound.master.gain.setTargetAtTime(.68,sound.ctx.currentTime,.1);}else if(sound.ctx){sound.master.gain.setTargetAtTime(0,sound.ctx.currentTime,.08);}});
+let started=false,velocity=0,heading=0,distance=0,orbit=0,zoom=45,pitch=20,drag=false,lastX=0,lastY=0;const keys={};document.getElementById('start').onclick=async()=>{audioInit();if(sound.ctx&&sound.enabled){await sound.ctx.resume();sound.master.gain.setTargetAtTime(.68,sound.ctx.currentTime,.08);}resetChase()};window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();if(e.key===' ') {orbit=0;zoom=45;pitch=20}});window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);window.addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));document.querySelectorAll('[data-key]').forEach(b=>{b.onpointerdown=e=>{e.preventDefault();keys[b.dataset.key]=true;b.classList.add('pressed');b.setPointerCapture(e.pointerId)};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>{keys[b.dataset.key]=false;b.classList.remove('pressed')}});renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY});window.addEventListener('pointerup',()=>drag=false);window.addEventListener('pointermove',e=>{if(!drag)return;orbit-=(e.clientX-lastX)*.006;pitch=THREE.MathUtils.clamp(pitch+(e.clientY-lastY)*.08,4,40);lastX=e.clientX;lastY=e.clientY});renderer.domElement.addEventListener('wheel',e=>{zoom=THREE.MathUtils.clamp(zoom+e.deltaY*.02,22,110)},{passive:true});
+const settingsToggle=document.getElementById('settingsToggle');settingsToggle.onclick=()=>{const open=document.getElementById('weatherPanel').classList.toggle('mobileOpen');settingsToggle.setAttribute('aria-expanded',String(open));settingsToggle.textContent=open?'✕ CLOSE SETTINGS':'⚙ SEA & SKY';};
+let pinchDistance=0;renderer.domElement.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinchDistance)zoom=THREE.MathUtils.clamp(zoom+(pinchDistance-d)*.12,22,110);pinchDistance=d;drag=false;}},{passive:true});renderer.domElement.addEventListener('touchend',()=>pinchDistance=0,{passive:true});
+const daySlider=document.getElementById('dayTime'),timeValue=document.getElementById('timeValue');let dayHour=15.5;daySlider.addEventListener('input',()=>{dayHour=Number(daySlider.value);const h=Math.floor(dayHour)%24,m=Math.round((dayHour%1)*60);timeValue.textContent=((h+11)%12+1)+':'+String(m).padStart(2,'0')+(h<12?' AM':' PM');});
+const weatherSelect=document.getElementById('weather'),waveSlider=document.getElementById('waveHeight'),waveValue=document.getElementById('waveValue'),weatherStatus=document.getElementById('weatherStatus'),flash=document.getElementById('flash');
+let waveHeight=5.5,weather='painting',lightning=0,nextLightning=5;
+const rainCount=850,rainPositions=new Float32Array(rainCount*6);
+const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPositions,3));
+const rain=new THREE.LineSegments(rainGeo,new THREE.LineBasicMaterial({color:'#c1e9ff',transparent:true,opacity:.45,depthWrite:false}));rain.frustumCulled=false;scene.add(rain);
+const weatherSkies={painting:['#4d6868','#8baca1',.91,2.05],clear:['#17475c','#245568',1.15,3.8],cloudy:['#2a4856','#405864',.8,1.7],rain:['#1a3448','#304a58',.64,1.1],storm:['#102b42','#23475a',.52,1.15],tsunami:['#666c74','#858b92',.72,1.4],fog:['#849da6','#829aa2',.73,.9],sunset:['#c87855','#9b6370',1.05,2.4]};
+function applyWeather(){weather=weatherSelect.value;waveHeight=Number(waveSlider.value);waveValue.textContent=waveHeight.toFixed(1)+' m';const sky=weatherSkies[weather];scene.background.set(sky[0]);scene.fog.color.set(sky[1]);scene.fog.density=weather==='fog'?.011:weather==='tsunami'?.0028:weather==='storm'?.0024:weather==='rain'?.0016:weather==='painting'?.0025:.0008;renderer.toneMappingExposure=sky[2]*.88;sunlight.intensity=sky[3];sunlight.color.set(weather==='painting'?'#d9d5b2':'#ffb850');sun.visible=weather==='painting'||weather==='clear'||weather==='cloudy'||weather==='sunset';rain.visible=weather==='rain'||weather==='storm';weatherStatus.textContent=weather==='painting'?'40% of swells break into whitewater at peak crests':weather==='tsunami'?'Tsunami: 20% form complete barrels; widely spaced wave rows; automatic visibility camera':weather==='storm'?'Lightning, heavy rain & rough seas':weather==='rain'?'Rain and low visibility':weather==='cloudy'?'Grey skies and rolling water':weather==='fog'?'Dense fog and very low visibility':weather==='sunset'?'Warm sunset light':'Golden light and open water';}
+weatherSelect.addEventListener('change',()=>{if(weatherSelect.value==='tsunami'){waveSlider.value='20';lastShipBreakerCycle=null;}applyWeather();});waveSlider.addEventListener('input',applyWeather);applyWeather();
+// Shared ocean height field. Both the rendered mesh and ship sample the same waves.
+function waveAt(x,z,t){
+ if(weather==='tsunami'){
+  // Coherent X-aligned wave rows with high, asymmetric crests and a steep breaking face.
+  // Height is measured from trough to crest, not from the baseline.
+  const phase=z*.010-t*.38;
+  const body=Math.sin(phase);
+  const sharpFace=Math.pow(Math.max(0,body),5)*.64;
+  const rearTrough=-.12*Math.pow(Math.max(0,-body),2);
+  return waveHeight*2.55*(body*.83+sharpFace+rearTrough);
+ }
+ const k=waveHeight*.67;
+ // Steep swells with sharper crests and irregular smaller chop.
+ const u=x*.020+z*.007+t*.72,v=z*.027-x*.012+t*.94,w=(x+z)*.014+t*.53;
+ const swell=Math.sin(u)*1.35+Math.sin(v)*.92+Math.sin(w)*.68;
+ const crest=Math.pow(Math.max(0,Math.sin(u)),3)*.38+
+             Math.pow(Math.max(0,Math.sin(v)),3)*.20;
+ // An occasional advancing breaker: a narrow, steep front, not repeating circles.
+ const front=(x*.72+z*.41+t*17.5)/76;
+ const phase=front-Math.floor(front);
+ const breakerEnvelope=Math.pow(Math.max(0,Math.sin(phase*Math.PI)),12);
+ const breaker=breakerEnvelope*(.27+.12*Math.sin(z*.027+t*.33))*Math.max(0,waveHeight-1.4);
+ // Tsunami setting: broad, very tall traveling swells, without a special wall effect.
+ // Keep the same natural ocean wave system, just increase its scale and wavelength.
+ const tsunamiScale=weather==='tsunami'?2.65:1;
+ return (swell+crest+Math.sin(x*.048-z*.027+t*.9)*.055)*k*tsunamiScale+breaker*(weather==='tsunami'?1.7:1);
+}
+// Exactly 40% of successive swell cycles are selected as breakers.
+// A selected cycle produces foam ONLY near its crest (peak wave phase).
+const BREAKING_WAVE_SHARE=.40;
+function breakerAt(x,z,t){
+ const phase=weather==='tsunami'?z*.010-t*.38:x*.020+z*.007+t*.72;
+ const cycle=Math.floor((phase+Math.PI/2)/(Math.PI*2));
+ const h=Math.sin(cycle*127.1+19.7)*43758.5453;
+ const selected=(h-Math.floor(h))<BREAKING_WAVE_SHARE;
+ const crest=Math.max(0,Math.sin(phase));
+ const peak=THREE.MathUtils.smoothstep(crest,.91,.995);
+ return selected?peak:0;
+}
+// One in five tsunami rows curls forward into a traversable-looking wave tunnel.
+// These are open-ended, continuous breaking barrels, not circular ripples.
+const TSUNAMI_TUNNEL_SHARE=.20;
+function tsunamiTunnelSelected(cycle){
+ const h=Math.sin(cycle*91.713+6.19)*43758.5453;
+ return h-Math.floor(h)<TSUNAMI_TUNNEL_SHARE;
+}
+const tunnelRows=[];
+const tunnelAcross=46,tunnelAround=60;
+for(let row=0;row<7;row++){
+ const geo=new THREE.BufferGeometry();
+ const verts=new Float32Array((tunnelAcross+1)*(tunnelAround+1)*3);
+ const indices=[];
+ for(let i=0;i<tunnelAcross;i++)for(let j=0;j<tunnelAround;j++){
+  const a=i*(tunnelAround+1)+j,b=a+tunnelAround+1;
+  indices.push(a,b,a+1,b,b+1,a+1);
+ }
+ geo.setAttribute('position',new THREE.BufferAttribute(verts,3));geo.setIndex(indices);
+ const mat=new THREE.MeshStandardMaterial({color:'#12618d',roughness:.23,metalness:.04,side:THREE.DoubleSide,transparent:true,opacity:.91,depthWrite:true});
+ const mesh=new THREE.Mesh(geo,mat);mesh.frustumCulled=false;mesh.visible=false;
+ scene.add(mesh);tunnelRows.push(mesh);
+}
+function updateTsunamiTunnels(t){
+ for(const m of tunnelRows)m.visible=false;
+ if(weather!=='tsunami')return;
+ const phaseAtBoat=boat.position.z*.010-t*.38;
+ const cycleNear=Math.floor((phaseAtBoat-Math.PI/2)/(Math.PI*2));
+ let slot=0;
+ for(let offset=-3;offset<=3;offset++){
+  const cycle=cycleNear+offset;
+  if(!tsunamiTunnelSelected(cycle))continue;
+  const crestZ=(Math.PI/2+cycle*Math.PI*2+t*.38)/.010;
+  if(Math.abs(crestZ-boat.position.z)>950||slot>=tunnelRows.length)continue;
+  const m=tunnelRows[slot++],p=m.geometry.attributes.position;
+  const radius=22+waveHeight*.55,arc=Math.PI*1.94;
+  const crestHeight=waveAt(boat.position.x,crestZ,t);
+  for(let i=0;i<=tunnelAcross;i++){
+   const x=boat.position.x-950+1900*i/tunnelAcross;
+   for(let j=0;j<=tunnelAround;j++){
+    const a=j/tunnelAround*arc;
+    // The curling lip reaches forward over the trough and hangs down.
+    const z=crestZ-radius*Math.cos(a)+radius*.25;
+    const y=crestHeight-radius*.68+radius*Math.sin(a)+3*Math.cos(a);
+    p.setXYZ(i*(tunnelAround+1)+j,x,y,z);
+   }
+  }
+  p.needsUpdate=true;m.geometry.computeVertexNormals();m.visible=true;
+ }
+}
+// Crest-breaking sea spray, born only on steep advancing wave faces.
+const breakCount=420;
+const breakPos=new Float32Array(breakCount*3),breakVel=new Float32Array(breakCount*3),breakAge=new Float32Array(breakCount);
+const breakGeo=new THREE.BufferGeometry();breakGeo.setAttribute('position',new THREE.BufferAttribute(breakPos,3));
+const breakSpray=new THREE.Points(breakGeo,new THREE.PointsMaterial({color:'#d6e8ee',size:1.25,transparent:true,opacity:.78,depthWrite:false,sizeAttenuation:true}));
+breakSpray.frustumCulled=false;scene.add(breakSpray);
+let sprayCursor=0;let spraySeed=239487;
+function sprayRand(){spraySeed=(Math.imul(spraySeed,1664525)+1013904223)>>>0;return spraySeed/4294967296;}
+function updateBreakingSpray(dt,t){
+ for(let i=0;i<breakCount;i++){
+  if(breakAge[i]<=0)continue;
+  breakAge[i]-=dt;const k=i*3;
+  breakPos[k]+=breakVel[k]*dt;breakPos[k+1]+=breakVel[k+1]*dt;breakPos[k+2]+=breakVel[k+2]*dt;
+  breakVel[k+1]-=14*dt;
+  if(breakAge[i]<=0||breakPos[k+1]<waveAt(breakPos[k],breakPos[k+2],t)-.4)breakPos[k+1]=-999;
+ }
+ if(waveHeight>2.6){
+  for(let j=0;j<(weather==='tsunami'?65:11);j++){
+   const x=boat.position.x+(sprayRand()-.5)*155,z=boat.position.z+(sprayRand()-.5)*155;
+   const steep=weather==='tsunami'?Math.abs(waveAt(x,z+4,t)-waveAt(x,z-4,t)):waveAt(x+2,z,t)-waveAt(x-2,z,t);
+   const forward=weather==='tsunami'?steep:waveAt(x,z,t)-waveAt(x-4,z-2.3,t);
+   if(steep<(weather==='tsunami'?.45:.65)||forward<.2||breakerAt(x,z,t)<.64)continue;
+   const i=sprayCursor++%breakCount,k=i*3;
+   breakPos[k]=x;breakPos[k+1]=waveAt(x,z,t)+.45;breakPos[k+2]=z;
+   breakVel[k]=2+sprayRand()*6;breakVel[k+1]=(weather==='tsunami'?11:3)+sprayRand()*(weather==='tsunami'?15:6);breakVel[k+2]=2+sprayRand()*4;
+   breakAge[i]=(weather==='tsunami'?.85:.45)+sprayRand()*1.1;
+  }
+ }
+ breakGeo.attributes.position.needsUpdate=true;
+}
+// A wave hits the vessel only as a selected tsunami crest crosses its position.
+let lastShipBreakerCycle=null,shipBreakerShake=0;
+function updateShipBreaker(dt,t){
+ shipBreakerShake=Math.max(0,shipBreakerShake-dt*1.6);
+ if(weather!=='tsunami'||!started||sinking||krakenState==='eating')return;
+ const phase=boat.position.z*.010-t*.38;
+ const cycle=Math.floor((phase+Math.PI/2)/(Math.PI*2));
+ const crest=Math.sin(phase);
+ if(crest>.965&&breakerAt(boat.position.x,boat.position.z,t)>.8&&lastShipBreakerCycle!==cycle){
+  lastShipBreakerCycle=cycle;shipBreakerShake=1;
+  audioBurst('splash',1.8);audioBurst('impact',.35);
+  for(let j=0;j<180;j++){
+   const i=sprayCursor++%breakCount,k=i*3;
+   const theta=sprayRand()*Math.PI*2,dist=sprayRand()*12;
+   breakPos[k]=boat.position.x+Math.cos(theta)*dist;
+   breakPos[k+1]=waveAt(boat.position.x,boat.position.z,t)+sprayRand()*8;
+   breakPos[k+2]=boat.position.z+Math.sin(theta)*dist;
+   breakVel[k]=(sprayRand()-.5)*19;
+   breakVel[k+1]=12+sprayRand()*26;
+   breakVel[k+2]=(sprayRand()-.5)*19;
+   breakAge[i]=1+sprayRand()*1.5;
+  }
+ }
+}
+const seaBaseColors=new Float32Array(seaGeo.attributes.color.array);
+const oceanColor=new THREE.Color(),foamColor=new THREE.Color('#9cbac9');
+const wakeGeo=new THREE.BufferGeometry(),wakeN=110,wakeCoords=new Float32Array(wakeN*3),wakeAlpha=[];
+wakeGeo.setAttribute('position',new THREE.BufferAttribute(wakeCoords,3));
+const wakePoints=new THREE.Points(wakeGeo,new THREE.PointsMaterial({color:'#e6ffff',size:2.1,transparent:true,opacity:.66,depthWrite:false,sizeAttenuation:true}));
+wakePoints.frustumCulled=false;scene.add(wakePoints);
+const sprayGeo=new THREE.BufferGeometry(),sprayN=150,sprayCoords=new Float32Array(sprayN*3);
+sprayGeo.setAttribute('position',new THREE.BufferAttribute(sprayCoords,3));
+const spray=new THREE.Points(sprayGeo,new THREE.PointsMaterial({color:'#f0ffff',size:.8,transparent:true,opacity:.5,depthWrite:false}));
+spray.frustumCulled=false;scene.add(spray);
+const shipFloat=new THREE.Vector3(),pitchTarget=new THREE.Vector3();
+let floatY=0,rollAngle=0,pitchAngle=0;
+const clock=new THREE.Clock();let elapsed=0;function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);elapsed+=dt;const t=elapsed;audioTick(dt,t);waterUniforms.waterTime.value=t;waterUniforms.waterNight.value=Math.max(0,1-Math.max(0,Math.sin((dayHour-6)/24*Math.PI*2))/.25);oceanNormalMap.offset.set(t*.0015,t*.003);// Ocean follows the camera horizontally, but its waves remain in world coordinates.
+const oceanX=boat.position.x,oceanZ=boat.position.z;skyDome.position.set(oceanX,0,oceanZ);stars.position.set(oceanX,0,oceanZ);stars.material.opacity=Math.max(0,(1-THREE.MathUtils.smoothstep(Math.sin((dayHour-6)/24*Math.PI*2),-.2,.35))*.9);skyDome.material.uniforms.skyTime.value=t;skyDome.visible=weather==='painting'||weather==='tsunami';sunlight.position.set(oceanX-180,95,oceanZ-290);sunlight.target.position.set(oceanX,0,oceanZ);sunlight.target.updateMatrixWorld();
+ocean.position.set(oceanX,-.85,oceanZ);
+for(let i=0;i<pos.count;i++){
+ const x=seaBase[i*3]+oceanX,z=seaBase[i*3+2]+oceanZ;
+ const h=waveAt(x,z,t);
+ pos.setY(i,h);
+ const c=seaGeo.attributes.color;
+ const crest=THREE.MathUtils.smoothstep(h,waveHeight*.6,waveHeight*1.42);
+ // Whitewater appears only where a moving crest is steep enough to break.
+ const steepX=(waveAt(x+2,z,t)-waveAt(x-2,z,t))*.25;
+ const steepZ=(waveAt(x,z+2,t)-waveAt(x,z-2,t))*.25;
+ const steepness=Math.hypot(steepX,steepZ);
+ const foam=breakerAt(x,z,t)*THREE.MathUtils.smoothstep(steepness,weather==='tsunami'?.12:.30,weather==='tsunami'?.45:1.45)*.91;
+ const shade=.83+THREE.MathUtils.clamp((h+waveHeight*1.5)/(waveHeight*3.4),0,1)*.19;
+ c.setXYZ(i,
+   Math.min(1,seaBaseColors[i*3]*shade*(1-foam)+foam*.87),
+   Math.min(1,seaBaseColors[i*3+1]*shade*(1-foam)+foam*.94),
+   Math.min(1,seaBaseColors[i*3+2]*shade*(1-foam)+foam*.96));}
+pos.needsUpdate=true;seaGeo.attributes.color.needsUpdate=true;seaGeo.computeVertexNormals();updateBreakingSpray(dt,t);updateShipBreaker(dt,t);updateTsunamiTunnels(t);
+if(started&&!sinking&&krakenState!=='eating'&&krakenState!=='done'){
+// Arcade steering: A/D rotate the hull through unlimited 360-degree turns.
+// W/S move along the ship's facing direction; no inertia or sailing physics.
+const forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
+const turning=(keys.a||keys.arrowleft?1:0)-(keys.d||keys.arrowright?1:0);
+heading+=turning*dt*2.9;
+const boosting=!!keys.shift&&boostFuel>0&&forward!==0;
+velocity=forward*(boosting?112:66);
+if(boosting)boostFuel=Math.max(0,boostFuel-dt*19);
+else boostFuel=Math.min(100,boostFuel+dt*8);
+if(forward!==0){
+boat.position.x-=Math.sin(heading)*velocity*dt;
+boat.position.z-=Math.cos(heading)*velocity*dt;
+distance+=Math.abs(velocity)*dt/180;
+}
+if(krakenState!=='eating'&&krakenState!=='done')chaseTime+=dt;
+for(const isle of islands){const dx=boat.position.x-isle.x,dz=boat.position.z-isle.z;const d=Math.hypot(dx,dz);if(d>0.001&&d<isle.r*.83+4){boat.position.x=isle.x+dx/d*(isle.r*.83+4);boat.position.z=isle.z+dz/d*(isle.r*.83+4);}}
+}
+if(started&&krakenState==='hidden'){
+ krakenHuntDelay=Math.max(0,krakenHuntDelay-dt);
+ const dx=boat.position.x-krakenSpot.x,dz=boat.position.z-krakenSpot.z;
+ const gap=Math.hypot(dx,dz);
+ // The submerged kraken hunts the boat instead of waiting in one spot.
+ const swimSpeed=48;
+ krakenDashCooldown=Math.max(0,krakenDashCooldown-dt);
+ krakenDash=Math.max(0,krakenDash-dt);
+ if(gap<145&&gap>36&&krakenDashCooldown===0){
+   krakenDash=1.05;krakenDashCooldown=5.4;audioBurst('dash',.8);
+ }
+ const dashMultiplier=krakenDash>0?1.13:1;
+ if(krakenHuntDelay===0&&gap>1){
+   const step=Math.min(gap,swimSpeed*dashMultiplier*dt);
+   krakenSpot.x+=dx/gap*step;krakenSpot.z+=dz/gap*step;
+ }
+ kraken.position.copy(krakenSpot);
+ if(gap<130)krakenAlert.textContent=krakenDash>0?'KRAKEN SHADOW DASHING TOWARD YOU!':'DANGER: A HUGE SHADOW BELOW!';
+ else krakenAlert.textContent='THE KRAKEN LURKS BELOW';
+ if(gap<36)triggerKraken();
+}
+if(krakenState==='rising'){
+ krakenTimer+=dt;
+ const q=Math.min(1,krakenTimer/2.4);
+ // Surface first, then actively pursue. The ship remains steerable.
+ kraken.position.y=-42+q*39;
+ const dx=boat.position.x-kraken.position.x,dz=boat.position.z-kraken.position.z;
+ const gap=Math.hypot(dx,dz);
+ if(gap>1){const speed=48;kraken.position.x+=dx/gap*speed*dt;kraken.position.z+=dz/gap*speed*dt;}
+ if(q>=1){krakenState='hunting';krakenTimer=0;krakenAlert.textContent='KRAKEN CHASING YOU!';}
+}
+if(krakenState==='hunting'){
+ const dx=boat.position.x-kraken.position.x,dz=boat.position.z-kraken.position.z;
+ const gap=Math.hypot(dx,dz);
+ if(gap>1){const speed=48;kraken.position.x+=dx/gap*speed*dt;kraken.position.z+=dz/gap*speed*dt;}
+ kraken.position.y=-3+Math.sin(t*1.5)*.8;
+ if(gap<17){
+  krakenState='eating';krakenTimer=0;caughtBy='kraken';velocity=0;recordSurvival();
+  grabStart.copy(boat.position);grabHeading=heading;
+  krakenAlert.textContent='TENTACLES GRABBING THE SHIP!';audioBurst('grab',1.1);audioBurst('impact',.55);
+ }
+}
+if(krakenState==='eating'){
+ krakenTimer+=dt;
+ const q=Math.min(1,krakenTimer/6.6);
+ // First the tentacles reach and latch onto the hull. Then they drag it down.
+ const latch=THREE.MathUtils.smoothstep(q,.24,.47);
+ const pull=THREE.MathUtils.smoothstep(q,.49,.98);
+ if(q>.52&&splashTime<0){beginSplash();audioBurst('splash',1.4);audioBurst('impact',.9);}
+ boat.position.x=THREE.MathUtils.lerp(grabStart.x,kraken.position.x,latch*.78+pull*.22);
+ boat.position.z=THREE.MathUtils.lerp(grabStart.z,kraken.position.z,latch*.78+pull*.22);
+ boat.position.y=THREE.MathUtils.lerp(grabStart.y,7,latch)-pull*36;
+ boat.rotation.y=grabHeading+pull*1.25;
+ boat.rotation.z=Math.sin(q*25)*.09*latch+pull*.65;
+ boat.rotation.x=-pull*.44;
+ // Keep the ship visible while it is seized. No instant shrinking.
+ boat.scale.setScalar(1);
+ kraken.position.y=THREE.MathUtils.lerp(0,-18,pull);
+ if(q>.49)krakenAlert.textContent='THE KRAKEN IS PULLING YOU UNDER!';else if(q>.2)krakenAlert.textContent='TENTACLES COILING AROUND THE HULL!';
+ if(q>=1){krakenState='done';kraken.visible=false;endChase();}
+}
+if(kraken.visible){
+ positionKrakenArms(t);
+ krakenBody.rotation.z=Math.sin(t*.65)*.045;
+ krakenBody.scale.y=1+Math.sin(t*1.1)*.018;
+}
+if(sinking){
+sinkTimer+=dt;const progress=Math.min(1,sinkTimer/5.2);
+whirlpool.visible=true;whirlpool.position.x=boat.position.x;whirlpool.position.z=boat.position.z;
+whirlpool.rotation.y+=dt*(1.8+progress*5);
+vortexRings.forEach((r,i)=>{r.rotation.z+=dt*(.3+i*.015);r.material.opacity=.45+.35*Math.sin(t*3+i*.5)**2;});
+boat.rotation.y+=dt*(2+progress*5);
+boat.position.y=-progress*18+Math.sin(t*2)*.4;
+boat.rotation.z=progress*.65;boat.rotation.x=progress*.4;
+boat.scale.setScalar(Math.max(.08,1-progress*.87));
+if(progress>=1){sinking=false;whirlpool.visible=false;endChase();}
+}
+
+const gapNow=Math.hypot(boat.position.x-(krakenState==='hidden'?krakenSpot.x:kraken.position.x),boat.position.z-(krakenState==='hidden'?krakenSpot.z:kraken.position.z));
+document.getElementById('monsterDistance').textContent=Math.round(gapNow);
+document.getElementById('survival').textContent=scoreClock(chaseTime);
+document.getElementById('boost').textContent=Math.round(boostFuel);
+if(!sinking&&krakenState!=='eating'&&krakenState!=='done'){
+ boat.rotation.y=heading;
+ // Sample the water at bow, stern, port and starboard to match the wave slope.
+ const fX=-Math.sin(heading),fZ=-Math.cos(heading);
+ const rX=Math.cos(heading),rZ=-Math.sin(heading);
+ const x=boat.position.x,z=boat.position.z;
+ const center=waveAt(x,z,t);
+ const bow=waveAt(x+fX*5.5,z+fZ*5.5,t);
+ const stern=waveAt(x-fX*5.5,z-fZ*5.5,t);
+ const starboard=waveAt(x+rX*2.8,z+rZ*2.8,t);
+ const port=waveAt(x-rX*2.8,z-rZ*2.8,t);
+ const desiredPitch=Math.atan2(bow-stern,11);
+ const desiredRoll=Math.atan2(port-starboard,5.6);
+ // Buoyancy eases the hull into waves while controls stay fully arcade-style.
+ const follow=1-Math.exp(-dt*4.2);
+ floatY=THREE.MathUtils.lerp(floatY,center-.45,follow);
+ pitchAngle=THREE.MathUtils.lerp(pitchAngle,THREE.MathUtils.clamp(desiredPitch,-.43,.43),follow);
+ rollAngle=THREE.MathUtils.lerp(rollAngle,THREE.MathUtils.clamp(desiredRoll,-.48,.48),follow);
+ boat.position.y=floatY;
+ hull.rotation.x=pitchAngle+Math.sin(t*15)*shipBreakerShake*.12;
+ hull.rotation.z=rollAngle+Math.sin(t*18)*shipBreakerShake*.17;
+ // Visible bow spray and foamy wake, tied to ship direction and movement.
+ for(let i=0;i<wakeN;i++){
+  const trail=3+(i%22)*1.65;
+  const spread=((i*7)%13-6)*(.35+trail*.025);
+  const wx=x-fX*trail+rX*spread,wz=z-fZ*trail+rZ*spread;
+  const n=i*3;wakeCoords[n]=wx;wakeCoords[n+1]=waveAt(wx,wz,t)-.66+.22;wakeCoords[n+2]=wz;
+ }
+ wakeGeo.attributes.position.needsUpdate=true;
+ wakePoints.material.opacity=velocity===0?.08:.60;
+ for(let i=0;i<sprayN;i++){
+  const q=i*3,side=i%2?1:-1,seed=i*13.17;
+  const age=((t*(4+Math.abs(velocity)*.08)+seed)%14)/14;
+  const sx=x+fX*(4.4-age*9)+rX*side*(1.9+age*4);
+  const sz=z+fZ*(4.4-age*9)+rZ*side*(1.9+age*4);
+  sprayCoords[q]=sx;sprayCoords[q+1]=waveAt(sx,sz,t)-.85+.4+Math.sin(age*Math.PI)*Math.min(2.8,Math.abs(velocity)*.035);sprayCoords[q+2]=sz;
+ }
+ sprayGeo.attributes.position.needsUpdate=true;
+ spray.material.opacity=velocity===0?0:.6;
+}
+if(rain.visible){for(let i=0;i<rainCount;i++){const k=i*6;const seed=i*91.713;const x=((Math.sin(seed)*43758.5453)%1+1)%1;const z=((Math.sin(seed*1.37)*12741.29)%1+1)%1;const y=((t*(weather==='storm'?25:15)+i*2.37)%75);rainPositions[k]=boat.position.x+(x-.5)*160;rainPositions[k+1]=boat.position.y+75-y;rainPositions[k+2]=boat.position.z+(z-.5)*160;rainPositions[k+3]=rainPositions[k]-1.2;rainPositions[k+4]=rainPositions[k+1]-2.4;rainPositions[k+5]=rainPositions[k+2];}rainGeo.attributes.position.needsUpdate=true;}
+if(weather==='storm'&&t>nextLightning){lightning=.85;nextLightning=t+4+Math.random()*9;}lightning=Math.max(0,lightning-dt*3);flash.style.opacity=String(lightning*.55);const daylight=THREE.MathUtils.smoothstep(Math.sin((dayHour-6)/24*Math.PI*2),-.20,.35);
+const dusk=1-Math.abs(daylight-.5)*2;
+sunlight.intensity=weatherSkies[weather][3]*(daylight*.88+.055)+lightning*5;skyFill.intensity=.28+daylight*1.15;oceanBounce.intensity=.16+daylight*.6;
+sunlight.color.set(daylight<.22?'#91b6e0':dusk>.45?'#ffc18b':weather==='painting'?'#f3e7c6':'#fff0cf');renderer.toneMappingExposure=weatherSkies[weather][2]*(daylight*.65+.24);
+renderer.toneMappingExposure=weatherSkies[weather][2]*(.38+daylight*.62)+lightning*.2;
+scene.background.copy(new THREE.Color(weatherSkies[weather][0]).lerp(new THREE.Color('#07162c'),1-daylight));
+scene.fog.color.copy(new THREE.Color(weatherSkies[weather][1]).lerp(new THREE.Color('#09172b'),1-daylight));
+skyDome.material.uniforms.topColor.value.set(weather==='tsunami'?'#555b65':daylight<.3?'#09162e':'#233a3b');
+skyDome.material.uniforms.horizonColor.value.set(weather==='tsunami'?'#9ca0a3':daylight<.3?'#22304e':'#c6c7a4');
+stars.position.copy(boat.position);stars.material.opacity=Math.max(0,.75-daylight*2.5);sun.visible=daylight>.17&&(weather==='painting'||weather==='clear'||weather==='cloudy'||weather==='sunset');
+for(const lantern of lanterns){const isNight=daylight<.18;lantern.fixture.visible=isNight;lantern.light.intensity=isNight?95:0;lantern.glow.material.opacity=isNight?1:0;lantern.glow.scale.setScalar(isNight?1.65:1);}
+
+mistBanks.position.set(boat.position.x,0,boat.position.z);mistBanks.rotation.y=t*.002;mistBanks.visible=weather!=='clear';
+const a=heading+orbit;
+const target=boat.position.clone().add(new THREE.Vector3(0,10,0));
+let offset=new THREE.Vector3(Math.sin(a)*zoom,pitch+zoom*.15,Math.cos(a)*zoom);
+if(weather==='tsunami'){
+ // Choose an elevated, lateral viewpoint when a wave wall obscures the boat.
+ // Evaluate both sides of the vessel, favoring a clear line of sight.
+ const seaHere=waveAt(boat.position.x,boat.position.z,t);
+ let best=offset,bestScore=-Infinity;
+ const candidateAngles=[a,a+Math.PI*.55,a-Math.PI*.55,a+Math.PI];
+ for(const angle of candidateAngles){
+  const side=new THREE.Vector3(Math.sin(angle)*zoom,Math.max(30,pitch+zoom*.36),Math.cos(angle)*zoom);
+  let obstruction=0;
+  for(let k=1;k<=9;k++){
+   const u=k/10,px=boat.position.x+side.x*u,pz=boat.position.z+side.z*u;
+   const lineY=target.y+(side.y-10)*u;
+   obstruction+=Math.max(0,waveAt(px,pz,t)-lineY+6);
+  }
+  const score=-obstruction-(Math.abs(Math.atan2(Math.sin(angle-a),Math.cos(angle-a)))*2);
+  if(score>bestScore){bestScore=score;best=side;}
+ }
+ const nearWall=Math.abs(waveAt(boat.position.x,boat.position.z+32,t)-seaHere)>15;
+ offset.lerp(best,nearWall?.94:.72);
+}
+camera.position.lerp(target.clone().add(offset),weather==='tsunami'?.095:.055);camera.lookAt(target);
+foam.forEach((f,i)=>{f.visible=false;const a=i*2.399,rr=12+Math.sqrt(i)*13;f.position.set(boat.position.x+Math.cos(a)*rr,waveAt(boat.position.x+Math.cos(a)*rr,boat.position.z+Math.sin(a)*rr,t)-.55,boat.position.z+Math.sin(a)*rr);f.rotation.z=a});
+krakenShadow.visible=started&&krakenState!=='done';
+krakenShadow.position.set(kraken.position.x,waveAt(kraken.position.x,kraken.position.z,t)-.68,kraken.position.z);
+krakenShadow.material.opacity=krakenState==='hidden'?(krakenDash>0?.58:.20):.34;
+krakenShadow.scale.set(krakenDash>0?1.2:1,krakenDash>0?2.2:1,1);
+krakenShadow.rotation.z=krakenDash>0?Math.atan2(boat.position.z-kraken.position.z,boat.position.x-kraken.position.x):0;
+for(let i=0;i<shadowTrail.length;i++){
+ const trail=shadowTrail[i];
+ const dx=boat.position.x-kraken.position.x,dz=boat.position.z-kraken.position.z;
+ const length=Math.max(1,Math.hypot(dx,dz));
+ const offset=(i+1)*7;
+ trail.visible=started&&krakenState==='hidden'&&krakenDash>0;
+ trail.position.set(kraken.position.x-dx/length*offset,waveAt(kraken.position.x-dx/length*offset,kraken.position.z-dz/length*offset,t)-.63,kraken.position.z-dz/length*offset);
+ trail.material.opacity=.18*(1-i/shadowTrail.length)*Math.min(1,krakenDash*3);
+ trail.scale.set(1.1+i*.15,.75+i*.16,1);
+}
+updateSplash(dt,t);attackFoam.visible=kraken.visible;
+attackFoam.position.set(kraken.position.x,waveAt(kraken.position.x,kraken.position.z,t)-.64,kraken.position.z);
+document.getElementById('heading').textContent=String((Math.round(heading*180/Math.PI)%360+360)%360).padStart(3,'0')+'°';document.getElementById('speed').textContent=velocity.toFixed(1);document.getElementById('distance').textContent=distance.toFixed(1);renderer.render(scene,camera)}animate();window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>
