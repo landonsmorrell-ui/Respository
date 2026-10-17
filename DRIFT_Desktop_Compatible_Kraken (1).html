@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DRIFT | Realistic Kraken Survival</title><style>
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#092b43;font-family:Trebuchet MS,Arial,sans-serif;color:#f8e7c9}canvas{display:block}#hud{position:absolute;inset:0;pointer-events:none}#title{position:absolute;top:25px;left:32px;font-size:29px;font-weight:900;letter-spacing:5px;text-shadow:0 2px 8px #001927}#subtitle{font-size:11px;letter-spacing:3px;font-weight:normal;margin-top:5px}#help{position:absolute;bottom:22px;left:28px;background:#092c43c9;border:1px solid #8db2bc88;padding:12px 16px;border-radius:14px;font-size:13px;line-height:1.7;box-shadow:0 4px 24px #25648a20}#stats{position:absolute;top:25px;right:26px;background:#092c43c9;border:1px solid white;padding:13px 20px;border-radius:16px;text-align:right;line-height:1.8;font-size:13px}#center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#05263cdd,#0b4e62b0);pointer-events:auto}#panel{background:#10374aee;border:2px solid #c59b5d;padding:32px 44px;border-radius:25px;text-align:center;max-width:460px;box-shadow:0 14px 55px #286a7b3b}h1{font-size:45px;letter-spacing:7px;margin:0 0 8px}button{background:#bd8847;color:white;border:0;border-radius:30px;padding:13px 38px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:17px}button:hover{background:#98652e}#error{position:absolute;bottom:12px;right:12px;max-width:420px;color:#852c2c;background:#092c43c9;padding:8px;display:none}#mobile{position:absolute;bottom:18px;right:20px;display:none;gap:10px;pointer-events:auto}#mobile button{padding:14px 20px;margin:0;touch-action:none}@media(pointer:coarse){#mobile{display:flex}#help{font-size:10px;max-width:200px}}
+#weatherPanel{position:absolute;top:145px;right:26px;background:#092c43df;border:1px solid #b9d1d7;padding:12px 14px;border-radius:14px;pointer-events:auto;font-size:13px;min-width:190px}#weatherPanel select{width:100%;margin-top:7px;padding:7px;background:#153f53;color:#fff1d7;border:1px solid #88a9b7;border-radius:7px}#weatherPanel label{display:block;margin-top:9px}#weatherPanel input{width:100%;accent-color:#dfb579}#weatherStatus{font-size:11px;color:#c8e7e8;margin-top:6px}#flash{position:absolute;inset:0;background:#d7f3ff;opacity:0;pointer-events:none} @media(max-width:650px){#weatherPanel{top:110px;right:8px;min-width:155px}#stats{top:12px;right:8px}#title{top:12px;left:12px;font-size:22px}#help{max-width:190px}}</style></head><body><div id="hud"><div id="title">DRIFT<div id="subtitle">ESCAPE THE ABYSS</div></div><div id="stats">HEADING <span id="heading">000°</span><br>MOVE SPEED <span id="speed">0.0</span><br>DISTANCE <span id="distance">0.0</span> nm<br><strong style="color:#ffba91">KRAKEN <span id="monsterDistance">--</span> m</strong><br>SURVIVAL <span id="survival">0:00</span><br>BOOST <span id="boost">100</span>%</div><div id="help"><b>Escape the hunting kraken</b><br>W / ↑ : Move forward &nbsp; S / ↓ : Move backward<br>A / ← and D / → : Rotate ship 360°<br>Drag mouse: Orbit camera &nbsp; Scroll: Zoom<br>Shift: Speed boost &nbsp; Space: Reset camera</div><div id="weatherPanel"><b>SKY & SEA</b><label>Weather<select id="weather"><option value="clear">Golden calm</option><option value="cloudy">Overcast</option><option value="rain">Rain</option><option value="storm">Thunderstorm</option><option value="fog">Heavy fog</option><option value="sunset">Sunset</option></select></label><label>Wave height <span id="waveValue">2.0 m</span><input id="waveHeight" type="range" min="0.3" max="9" step="0.1" value="2"></label><div id="weatherStatus">Gentle swells</div></div><div id="flash"></div><div id="mobile"><button data-key="a">◀</button><button data-key="w">▲</button><button data-key="s">▼</button><button data-key="d">▶</button></div></div><div id="center"><div id="panel"><h1>DRIFT</h1><div style="font-size:19px">Escape the Abyss</div><p>A giant kraken hunts your tall ship from beneath the waves. Outrun its tentacles, navigate the open sea, and survive as long as you can. Use W/S to move instantly and A/D to rotate a full 360 degrees. Hold Shift for a limited speed boost!</p><button id="start">ESCAPE NOW</button><p style="font-size:11px">Desktop browser • Internet required for the 3D library</p></div></div><div id="error"></div>
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.160.1';
+window.addEventListener('error',e=>{const el=document.getElementById('error');el.style.display='block';el.textContent='Game error: '+e.message});const scene=new THREE.Scene();scene.background=new THREE.Color('#17475c');scene.fog=new THREE.FogExp2('#245568',.0008);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);renderer.domElement.style.touchAction='none';
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,2500);
+scene.add(new THREE.HemisphereLight('#f7c98a','#063b57',1.65));const sunlight=new THREE.DirectionalLight('#ffb850',3.8);sunlight.position.set(-120,160,-260);scene.add(sunlight);sunlight.castShadow=true;sunlight.shadow.mapSize.set(1024,1024);sunlight.shadow.camera.left=-95;sunlight.shadow.camera.right=95;sunlight.shadow.camera.top=95;sunlight.shadow.camera.bottom=-95;sunlight.shadow.bias=-.0005;
+const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness,flatShading:false,side:THREE.DoubleSide});
+const wood=mat('#513b2b',.78),darkWood=mat('#30231e'),trim=mat('#242b30'),sailMat=mat('#4d75bd'),white=mat('#fff2d3'),sand=mat('#f6cc6a'),leaf=mat('#6a9e55'),rock=mat('#8e8b8b');
+function makeWoodTexture(){
+ const c=document.createElement('canvas');c.width=512;c.height=512;
+ const g=c.getContext('2d');g.fillStyle='#b69a79';g.fillRect(0,0,512,512);
+ let seed=7147;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+ for(let i=0;i<1100;i++){let y=rand()*512;g.strokeStyle='rgba(52,29,18,'+(.02+rand()*.15)+')';g.lineWidth=.3+rand()*2;g.beginPath();g.moveTo(0,y);g.bezierCurveTo(180,y+rand()*11-5,340,y+rand()*11-5,512,y+rand()*8-4);g.stroke()}
+ for(let y=0;y<512;y+=52){g.fillStyle='rgba(28,19,13,.24)';g.fillRect(0,y,512,2);for(let x=25;x<512;x+=92){g.fillStyle='rgba(25,20,15,.35)';g.beginPath();g.arc(x+(y%3)*17,y+5,1.5,0,Math.PI*2);g.fill()}}
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(1.5,1.5);tex.anisotropy=8;return tex;
+}
+wood.map=makeWoodTexture();wood.needsUpdate=true;
+function mesh(g,m,parent=scene,x=0,y=0,z=0){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);parent.add(o);o.castShadow=true;o.receiveShadow=true;return o}
+function box(w,h,d,m,p,x,y,z){return mesh(new THREE.BoxGeometry(w,h,d),m,p,x,y,z)}
+function sphere(r,m,p,x,y,z,sx=1,sy=1,sz=1){const o=mesh(new THREE.IcosahedronGeometry(r,1),m,p,x,y,z);o.scale.set(sx,sy,sz);return o}
+// Watercolor ocean: rolling, translucent-toned geometry, with painterly foam streaks.
+const N=125, extent=1500;const seaGeo=new THREE.PlaneGeometry(extent,extent,N,N);seaGeo.rotateX(-Math.PI/2);const pos=seaGeo.attributes.position;const seaBase=new Float32Array(pos.array);const seaMat=new THREE.MeshStandardMaterial({color:'#0c5264',roughness:.22,metalness:.12,flatShading:false,side:THREE.DoubleSide,vertexColors:true});const colors=[];for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);const c=new THREE.Color().setHSL(.54+Math.sin(x*.018+z*.01)*.018,.49,.30+Math.sin(x*.026-z*.014)*.065);colors.push(c.r,c.g,c.b)}seaGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));const ocean=mesh(seaGeo,seaMat);ocean.position.y=-.85;
+const boat=new THREE.Group();scene.add(boat);const hull=new THREE.Group();boat.add(hull);
+// Hull pointed toward negative Z.
+const shape=new THREE.Shape();shape.moveTo(-3.1,3.8);shape.lineTo(-3.8,-2.8);shape.quadraticCurveTo(0,-7.5,3.8,-2.8);shape.lineTo(3.1,3.8);shape.quadraticCurveTo(0,5, -3.1,3.8);
+const hullGeo=new THREE.ExtrudeGeometry(shape,{depth:1.7,bevelEnabled:true,bevelThickness:.28,bevelSize:.23,bevelSegments:2,steps:1});hullGeo.rotateX(-Math.PI/2);hullGeo.translate(0,-.2,0);mesh(hullGeo,wood,hull);const deck=box(5.7,.18,9,wood,hull,0,.65,-.4);deck.rotation.y=0;box(.25,.45,8,trim,hull,-3.0,.62,-.2);box(.25,.45,8,trim,hull,3.0,.62,-.2);box(5.5,.35,.3,trim,hull,0,.65,3.8);
+// Deck seams, cannon ports, rope coils and deck furniture.
+const seamMat=new THREE.MeshStandardMaterial({color:'#261c16',roughness:1});
+for(let x=-2.5;x<=2.5;x+=.65)box(.026,.025,8.2,seamMat,hull,x,.76,-.4);
+for(let z=-3.6;z<=3.5;z+=1.8)box(5.35,.024,.035,seamMat,hull,0,.77,z);
+for(let side of [-1,1]){
+ for(let z=-2.9;z<=2.9;z+=1.35){
+  box(.045,.34,.62,seamMat,hull,side*3.13,-.14,z);
+  const brass=box(.055,.035,.54,gold,hull,side*3.17,-.16,z);
+ }
+}
+const ropeMat=new THREE.MeshStandardMaterial({color:'#b6a081',roughness:1});
+for(const [x,z] of [[-2,1.7],[2,2.4],[-2,-2.6]]){
+ const rope=new THREE.Mesh(new THREE.TorusGeometry(.47,.055,6,24),ropeMat);rope.rotation.x=Math.PI/2;rope.position.set(x,.86,z);hull.add(rope);
+}
+box(2.6,.95,2.0,darkWood,hull,0,1.1,3.0);
+for(let j=0;j<3;j++)box(2.4,.11,.12,gold,hull,0,1.6+j*.18,3.9);
+// Three-masted tall ship: layered, warm parchment square sails, yards and rigging.
+const mastWood=mat('#34271e',.82),gold=mat('#997d52',.52),parchment=mat('#d7cab2');
+const sailCanvas=document.createElement('canvas');sailCanvas.width=256;sailCanvas.height=256;
+const sc=sailCanvas.getContext('2d');sc.fillStyle='#d7c8ac';sc.fillRect(0,0,256,256);
+for(let i=0;i<1600;i++){const x=Math.random()*256,y=Math.random()*256;sc.fillStyle=i%3===0?'rgba(255,221,146,.10)':'rgba(62,43,27,.065)';sc.fillRect(x,y,3+Math.random()*18,1+Math.random()*10)}
+for(let i=0;i<10;i++){sc.strokeStyle='rgba(92,61,36,.13)';sc.beginPath();sc.moveTo(0,i*27);sc.quadraticCurveTo(128,i*27+10,256,i*27);sc.stroke()}
+const sailTexture=new THREE.CanvasTexture(sailCanvas);sailTexture.colorSpace=THREE.SRGBColorSpace;
+const canvasMat=new THREE.MeshStandardMaterial({map:sailTexture,color:'#e9dfc9',side:THREE.DoubleSide,roughness:1,transparent:true,opacity:.96});
+function rigLine(x1,y1,z1,x2,y2,z2,r=.035){const a=new THREE.Vector3(x1,y1,z1),b=new THREE.Vector3(x2,y2,z2);const o=mesh(new THREE.CylinderGeometry(r,r,a.distanceTo(b),5),mastWood,hull);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.sub(a).normalize());}
+function squareSail(z,y,w,h){const shape=new THREE.BufferGeometry();const vertices=new Float32Array([-w/2,y+h/2,z, w/2,y+h/2,z, -w*.45,y-h/2,z+.85, w*.45,y-h/2,z+.85,0,y,z+1.2]);shape.setAttribute('position',new THREE.BufferAttribute(vertices,3));shape.setAttribute('uv',new THREE.Float32BufferAttribute([0,1,1,1,.04,0,.96,0,.5,.5],2));shape.setIndex([0,2,4,0,4,1,1,4,3,2,3,4]);shape.computeVertexNormals();mesh(shape,canvasMat,hull);box(w+.4,.16,.18,mastWood,hull,0,y+h/2,z);box(w*.91,.10,.15,mastWood,hull,0,y-h/2,z+.8);}
+for(const [z,height,width] of [[-3.1,23,10],[1.2,27,12],[4.2,19,8]]){
+mesh(new THREE.CylinderGeometry(.12,.24,height,9),mastWood,hull,0,height/2+.8,z);
+for(let j=0;j<3;j++){const h=5+j*5.2;const w=width*(1-j*.17);squareSail(z,h,w,4.8);}
+rigLine(0,height+.7,z,-3.3,.8,z-2);rigLine(0,height+.7,z,3.3,.8,z-2);
+}
+// Long bowsprit and stern rails.
+const bowsprit=mesh(new THREE.CylinderGeometry(.10,.18,10,7),mastWood,hull,0,2,-8);bowsprit.rotation.x=Math.PI/2.8;
+for(let side of [-1,1]){for(let z=-4;z<=3;z+=1.7){box(.11,1.3,.12,gold,hull,side*2.9,1.5,z)}box(.12,.12,8,gold,hull,side*2.9,2.1,-.4)}
+// Sailor figures.
+for(const [x,z,c] of [[-1.6,2,'#d1a26b'],[.2,2.5,'#8bb3b5'],[1.8,2.1,'#c89dbe']]){const p=new THREE.Group();hull.add(p);p.position.set(x,.7,z);mesh(new THREE.CylinderGeometry(.43,.6,1.25,7),mat(c),p,0,.8,0);sphere(.48,mat('#eac9a4'),p,0,1.7,0);sphere(.55,mat('#547b8e'),p,0,2.08,0,1,.3,1)}
+// Sun disk and watercolor cloud puffs.
+const sun=mesh(new THREE.SphereGeometry(30,24,16),new THREE.MeshBasicMaterial({color:'#ffd083'}),scene,-320,180,-650);
+const cloudMats=['#1c485a','#426b75','#a47d67'].map(c=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.92,depthWrite:false}));
+for(let i=0;i<23;i++){const x=(Math.random()-.5)*1100,z=-150-Math.random()*800,y=75+Math.random()*100;const g=new THREE.Group();scene.add(g);g.position.set(x,y,z);for(let j=0;j<4;j++)sphere(10+Math.random()*12,cloudMats[i%3],g,(j-1.5)*17,Math.random()*5,0,1.8,.33,.65)}
+// Islands, rocks, palms and lighthouse.
+const islands=[];function island(x,z,r,lighthouse=false){const group=new THREE.Group();scene.add(group);group.position.set(x,-.2,z);sphere(r,sand,group,0,-2,0,1,.2,.85);sphere(r*.7,mat('#6cb889'),group,0,-.5,0,1,.16,.85);for(let k=0;k<Math.max(3,Math.round(r/6));k++){const a=k*2.399,rr=r*.52,px=Math.cos(a)*rr,pz=Math.sin(a)*rr;const palm=new THREE.Group();group.add(palm);palm.position.set(px,.1,pz);mesh(new THREE.CylinderGeometry(.22,.36,6,6),mat('#9a7050'),palm,0,3,0);for(let j=0;j<6;j++){const fr=mesh(new THREE.ConeGeometry(2.7,7,3),leaf,palm,Math.cos(j*Math.PI/3)*2.3,6,Math.sin(j*Math.PI/3)*2.3);fr.rotation.z=Math.PI/2;fr.rotation.y=j*Math.PI/3}}if(lighthouse){mesh(new THREE.CylinderGeometry(1.2,1.8,14,10),white,group,0,7,0);mesh(new THREE.CylinderGeometry(1.8,1.8,1.1,10),mat('#d88a70'),group,0,14,0);mesh(new THREE.ConeGeometry(2.2,2.8,10),mat('#d66e58'),group,0,16,0);sphere(1.5,new THREE.MeshBasicMaterial({color:'#fff3b0'}),group,0,14.9,0)}islands.push({x,z,r})}
+// Open ocean: no cartoon islands.
+for(let i=0;i<0;i++){const x=(Math.random()-.5)*1100,z=(Math.random()-.5)*1100;if(Math.hypot(x,z)<90)continue;sphere(3+Math.random()*7,rock,scene,x,-.3,z,1,.6,1.2)}
+// Small patches of painted foam, animated with water.
+const foam=[];const foamMat=new THREE.MeshBasicMaterial({color:'#e1ffff',transparent:true,opacity:.62,side:THREE.DoubleSide,depthWrite:false});for(let i=0;i<90;i++){const o=mesh(new THREE.PlaneGeometry(2+Math.random()*9,.16+Math.random()*.55),foamMat);o.rotation.x=-Math.PI/2;foam.push(o)}
+let chaseTime=0,boostFuel=100,gameOver=false,sinking=false,sinkTimer=0;
+const whirlpool=new THREE.Group();scene.add(whirlpool);whirlpool.visible=false;
+const vortexRings=[];
+for(let i=0;i<22;i++){
+ const radius=3+i*1.28;
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(radius,.25+(i%3)*.12,6,100),
+ new THREE.MeshBasicMaterial({color:i%3===0?'#c9ffff':i%3===1?'#087a94':'#0b344b',transparent:true,opacity:.78,depthWrite:false}));
+ ring.rotation.x=-Math.PI/2;ring.position.y=-i*.37;whirlpool.add(ring);vortexRings.push(ring);
+}
+const funnelGeo=new THREE.CylinderGeometry(29,2.2,12,80,12,true);
+const funnel=new THREE.Mesh(funnelGeo,new THREE.MeshPhongMaterial({color:'#063b53',transparent:true,opacity:.78,side:THREE.DoubleSide,shininess:85}));
+funnel.position.y=-6.5;whirlpool.add(funnel);
+
+// Hidden kraken ambush. A fresh position is chosen every voyage.
+const kraken=new THREE.Group();scene.add(kraken);
+function makeSkinTexture(){
+ const c=document.createElement('canvas');c.width=256;c.height=256;const g=c.getContext('2d');
+ g.fillStyle='#534658';g.fillRect(0,0,256,256);let seed=93;
+ for(let i=0;i<5000;i++){seed=(seed*1664525+1013904223)>>>0;const x=(seed/4294967296)*256;seed=(seed*1664525+1013904223)>>>0;const y=(seed/4294967296)*256;
+ g.fillStyle=i%3?'rgba(8,13,21,.07)':'rgba(188,153,169,.08)';g.beginPath();g.arc(x,y,1+(i%6),0,Math.PI*2);g.fill()}
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+const skinTexture=makeSkinTexture();
+const krakenBody=new THREE.Mesh(new THREE.SphereGeometry(9,18,12),new THREE.MeshStandardMaterial({color:'#887c8b',map:skinTexture,roughness:.38,metalness:.04}));
+krakenBody.scale.set(1.3,.8,1.2);kraken.add(krakenBody);
+const krakenEyeMat=new THREE.MeshBasicMaterial({color:'#ffb64b'});
+for(const side of [-1,1]){
+ const eye=new THREE.Mesh(new THREE.SphereGeometry(1.25,12,10),krakenEyeMat);
+ eye.position.set(side*4,3,-7.5);kraken.add(eye);
+}
+const krakenArms=[];
+for(let arm=0;arm<8;arm++){
+ const segments=[],angle=arm*Math.PI/4;
+ for(let j=0;j<9;j++){
+  const radius=Math.max(.28,1.65-j*.16);
+  const seg=new THREE.Mesh(new THREE.SphereGeometry(radius,9,7),new THREE.MeshStandardMaterial({color:arm%2?'#a28a99':'#8c8295',map:skinTexture,roughness:.42}));
+  kraken.add(seg);segments.push(seg);
+ }
+ krakenArms.push({angle,segments});
+}
+const krakenShadow=new THREE.Mesh(new THREE.CircleGeometry(16,48),new THREE.MeshBasicMaterial({color:'#020d19',transparent:true,opacity:.38,depthWrite:false,side:THREE.DoubleSide}));
+krakenShadow.rotation.x=-Math.PI/2;scene.add(krakenShadow);
+const attackFoam=new THREE.Mesh(new THREE.RingGeometry(9,18,64),new THREE.MeshBasicMaterial({color:'#a3d4d6',transparent:true,opacity:.26,depthWrite:false,side:THREE.DoubleSide}));
+attackFoam.rotation.x=-Math.PI/2;scene.add(attackFoam);
+let krakenSpot=new THREE.Vector3(),krakenState='hidden',krakenTimer=0,caughtBy='kraken';
+let krakenHuntDelay=0;
+const krakenAlert=document.createElement('div');krakenAlert.style.cssText='position:absolute;top:85px;left:50%;transform:translateX(-50%);padding:9px 18px;border-radius:12px;background:#132e42dd;color:#ffe2b0;font:bold 14px Georgia,serif;pointer-events:none;z-index:10;text-align:center';krakenAlert.textContent='THE KRAKEN LURKS BELOW';document.body.appendChild(krakenAlert);
+function respawnKraken(){
+ const angle=Math.random()*Math.PI*2;
+ const radius=240+Math.random()*310;
+ krakenSpot.set(Math.sin(angle)*radius,-35,Math.cos(angle)*radius);
+ kraken.position.copy(krakenSpot);
+ kraken.visible=false;krakenShadow.visible=false;attackFoam.visible=false;krakenState='hidden';krakenTimer=0;krakenHuntDelay=4;krakenAlert.textContent='THE KRAKEN LURKS BELOW';
+}
+function triggerKraken(){
+ if(krakenState!=='hidden'||sinking||!started)return;
+ krakenState='rising';krakenTimer=0;kraken.visible=true;krakenAlert.textContent='KRAKEN RISING! KEEP MOVING!';
+}
+function resetChase(){started=true;gameOver=false;chaseTime=0;boostFuel=100;velocity=0;heading=0;sinking=false;sinkTimer=0;caughtBy='kraken';whirlpool.visible=false;boat.scale.set(1,1,1);boat.rotation.set(0,0,0);hull.rotation.set(0,0,0);floatY=0;rollAngle=0;pitchAngle=0;boat.position.set(0,0,0);boat.rotation.order="YXZ";boat.rotation.set(0,0,0);boat.quaternion.identity();hull.quaternion.identity();distance=0;respawnKraken();document.getElementById('center').style.display='none';}
+function endChase(){started=false;gameOver=true;document.getElementById('center').style.display='flex';document.querySelector('#panel h1').textContent='CAUGHT!';document.querySelector('#panel p').textContent='The kraken caught your tall ship and dragged it beneath the waves! '+'You survived '+Math.floor(chaseTime)+' seconds. Try again.';document.getElementById('start').textContent='SAIL AGAIN';}
+let started=false,velocity=0,heading=0,distance=0,orbit=0,zoom=45,pitch=20,drag=false,lastX=0,lastY=0;const keys={};document.getElementById('start').onclick=()=>{resetChase()};window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();if(e.key===' ') {orbit=0;zoom=45;pitch=20}});window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);window.addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));document.querySelectorAll('[data-key]').forEach(b=>{b.onpointerdown=e=>{e.preventDefault();keys[b.dataset.key]=true;b.setPointerCapture(e.pointerId)};b.onpointerup=b.onpointercancel=()=>keys[b.dataset.key]=false});renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY});window.addEventListener('pointerup',()=>drag=false);window.addEventListener('pointermove',e=>{if(!drag)return;orbit-=(e.clientX-lastX)*.006;pitch=THREE.MathUtils.clamp(pitch+(e.clientY-lastY)*.08,4,40);lastX=e.clientX;lastY=e.clientY});renderer.domElement.addEventListener('wheel',e=>{zoom=THREE.MathUtils.clamp(zoom+e.deltaY*.02,22,110)},{passive:true});
+const weatherSelect=document.getElementById('weather'),waveSlider=document.getElementById('waveHeight'),waveValue=document.getElementById('waveValue'),weatherStatus=document.getElementById('weatherStatus'),flash=document.getElementById('flash');
+let waveHeight=2,weather='clear',lightning=0,nextLightning=5;
+const rainCount=850,rainPositions=new Float32Array(rainCount*6);
+const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPositions,3));
+const rain=new THREE.LineSegments(rainGeo,new THREE.LineBasicMaterial({color:'#c1e9ff',transparent:true,opacity:.45,depthWrite:false}));rain.frustumCulled=false;scene.add(rain);
+const weatherSkies={clear:['#17475c','#245568',1.15,3.8],cloudy:['#2a4856','#405864',.8,1.7],rain:['#1a3448','#304a58',.64,1.1],storm:['#091d31','#162b3c',.38,.65],fog:['#849da6','#829aa2',.73,.9],sunset:['#c87855','#9b6370',1.05,2.4]};
+function applyWeather(){weather=weatherSelect.value;waveHeight=Number(waveSlider.value);waveValue.textContent=waveHeight.toFixed(1)+' m';const sky=weatherSkies[weather];scene.background.set(sky[0]);scene.fog.color.set(sky[1]);scene.fog.density=weather==='fog'?.011:weather==='storm'?.0024:weather==='rain'?.0016:.0008;renderer.toneMappingExposure=sky[2];sunlight.intensity=sky[3];sun.visible=weather==='clear'||weather==='cloudy'||weather==='sunset';rain.visible=weather==='rain'||weather==='storm';weatherStatus.textContent=weather==='storm'?'Lightning, heavy rain & rough seas':weather==='rain'?'Rain and low visibility':weather==='cloudy'?'Grey skies and rolling water':weather==='fog'?'Dense fog and very low visibility':weather==='sunset'?'Warm sunset light':'Golden light and open water';}
+weatherSelect.addEventListener('change',applyWeather);waveSlider.addEventListener('input',applyWeather);applyWeather();
+// Shared ocean height field. Both the rendered mesh and ship sample the same waves.
+function waveAt(x,z,t){
+ const k=waveHeight/2;
+ return (Math.sin(x*.020+t*(.65+waveHeight*.11))*1.5+
+ Math.sin(z*.032+t*(.85+waveHeight*.10))*1.1+
+ Math.sin((x+z)*.015+t*(.55+waveHeight*.12))*.9+
+ Math.sin(x*.075-z*.043+t*1.8)*.18)*k;
+}
+const seaBaseColors=new Float32Array(seaGeo.attributes.color.array);
+const oceanColor=new THREE.Color(),foamColor=new THREE.Color('#c2e8e5');
+const wakeGeo=new THREE.BufferGeometry(),wakeN=110,wakeCoords=new Float32Array(wakeN*3),wakeAlpha=[];
+wakeGeo.setAttribute('position',new THREE.BufferAttribute(wakeCoords,3));
+const wakePoints=new THREE.Points(wakeGeo,new THREE.PointsMaterial({color:'#e6ffff',size:2.1,transparent:true,opacity:.66,depthWrite:false,sizeAttenuation:true}));
+wakePoints.frustumCulled=false;scene.add(wakePoints);
+const sprayGeo=new THREE.BufferGeometry(),sprayN=150,sprayCoords=new Float32Array(sprayN*3);
+sprayGeo.setAttribute('position',new THREE.BufferAttribute(sprayCoords,3));
+const spray=new THREE.Points(sprayGeo,new THREE.PointsMaterial({color:'#f0ffff',size:.8,transparent:true,opacity:.5,depthWrite:false}));
+spray.frustumCulled=false;scene.add(spray);
+const shipFloat=new THREE.Vector3(),pitchTarget=new THREE.Vector3();
+let floatY=0,rollAngle=0,pitchAngle=0;
+const clock=new THREE.Clock();let elapsed=0;function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);elapsed+=dt;const t=elapsed;// Ocean follows the camera horizontally, but its waves remain in world coordinates.
+const oceanX=boat.position.x,oceanZ=boat.position.z;sunlight.position.set(oceanX-120,160,oceanZ-260);sunlight.target.position.set(oceanX,0,oceanZ);sunlight.target.updateMatrixWorld();
+ocean.position.set(oceanX,-.85,oceanZ);
+for(let i=0;i<pos.count;i++){
+ const x=seaBase[i*3]+oceanX,z=seaBase[i*3+2]+oceanZ;
+ const h=waveAt(x,z,t);
+ pos.setY(i,h);
+ const crest=THREE.MathUtils.smoothstep(h,1.2,Math.max(2.4,waveHeight*1.4));
+ const shade=.84+crest*.32;
+ const c=seaGeo.attributes.color;
+ c.setXYZ(i,Math.min(1,seaBaseColors[i*3]*shade+crest*.14),Math.min(1,seaBaseColors[i*3+1]*shade+crest*.16),Math.min(1,seaBaseColors[i*3+2]*shade+crest*.16));
+}
+pos.needsUpdate=true;seaGeo.attributes.color.needsUpdate=true;seaGeo.computeVertexNormals();
+if(started&&!sinking){
+// Arcade steering: A/D rotate the hull through unlimited 360-degree turns.
+// W/S move along the ship's facing direction; no inertia or sailing physics.
+const forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
+const turning=(keys.a||keys.arrowleft?1:0)-(keys.d||keys.arrowright?1:0);
+heading+=turning*dt*2.9;
+const boosting=!!keys.shift&&boostFuel>0&&forward!==0;
+velocity=forward*(boosting?78:38);
+if(boosting)boostFuel=Math.max(0,boostFuel-dt*19);
+else boostFuel=Math.min(100,boostFuel+dt*8);
+if(forward!==0){
+boat.position.x-=Math.sin(heading)*velocity*dt;
+boat.position.z-=Math.cos(heading)*velocity*dt;
+distance+=Math.abs(velocity)*dt/180;
+}
+chaseTime+=dt;
+for(const isle of islands){const dx=boat.position.x-isle.x,dz=boat.position.z-isle.z;const d=Math.hypot(dx,dz);if(d>0.001&&d<isle.r*.83+4){boat.position.x=isle.x+dx/d*(isle.r*.83+4);boat.position.z=isle.z+dz/d*(isle.r*.83+4);}}
+}
+if(started&&krakenState==='hidden'){
+ krakenHuntDelay=Math.max(0,krakenHuntDelay-dt);
+ const dx=boat.position.x-krakenSpot.x,dz=boat.position.z-krakenSpot.z;
+ const gap=Math.hypot(dx,dz);
+ // The submerged kraken hunts the boat instead of waiting in one spot.
+ const swimSpeed=Math.min(64,43+chaseTime*.22);
+ if(krakenHuntDelay===0&&gap>1){krakenSpot.x+=dx/gap*swimSpeed*dt;krakenSpot.z+=dz/gap*swimSpeed*dt;}
+ kraken.position.copy(krakenSpot);
+ if(gap<95)krakenAlert.textContent='DANGER: SOMETHING IS MOVING BELOW!';
+ else krakenAlert.textContent='THE KRAKEN LURKS BELOW';
+ if(gap<36)triggerKraken();
+}
+if(krakenState==='rising'){
+ krakenTimer+=dt;
+ const q=Math.min(1,krakenTimer/2.4);
+ // Surface first, then actively pursue. The ship remains steerable.
+ kraken.position.y=-35+q*35;
+ const dx=boat.position.x-kraken.position.x,dz=boat.position.z-kraken.position.z;
+ const gap=Math.hypot(dx,dz);
+ if(gap>1){const speed=Math.min(86,43+chaseTime*.35);kraken.position.x+=dx/gap*speed*dt;kraken.position.z+=dz/gap*speed*dt;}
+ if(q>=1){krakenState='hunting';krakenTimer=0;krakenAlert.textContent='KRAKEN CHASING YOU!';}
+}
+if(krakenState==='hunting'){
+ const dx=boat.position.x-kraken.position.x,dz=boat.position.z-kraken.position.z;
+ const gap=Math.hypot(dx,dz);
+ if(gap>1){const speed=Math.min(88,43+chaseTime*.32);kraken.position.x+=dx/gap*speed*dt;kraken.position.z+=dz/gap*speed*dt;}
+ kraken.position.y=Math.sin(t*1.5)*1.4;
+ if(gap<17){krakenState='eating';krakenTimer=0;caughtBy='kraken';velocity=0;krakenAlert.textContent='THE KRAKEN HAS YOUR SHIP!';}
+}
+if(krakenState==='eating'){
+ krakenTimer+=dt;
+ const q=Math.min(1,krakenTimer/3.1);
+ boat.position.x=THREE.MathUtils.lerp(boat.position.x,kraken.position.x,dt*3);
+ boat.position.z=THREE.MathUtils.lerp(boat.position.z,kraken.position.z,dt*3);
+ boat.position.y=8-q*28;
+ boat.rotation.z=q*1.3;boat.rotation.x=q*.8;boat.rotation.y+=dt*2.8;
+ boat.scale.setScalar(Math.max(.05,1-q*.95));
+ if(q>=1){krakenState='done';kraken.visible=false;endChase();}
+}
+if(kraken.visible){
+ krakenArms.forEach(({angle,segments},i)=>segments.forEach((seg,j)=>{
+  const d=7+j*3.3,phase=t*2.3-i*.5-j*.37;
+  seg.position.set(Math.cos(angle)*d+Math.sin(phase)*3,Math.sin(phase)*3+j*.55+4,Math.sin(angle)*d+Math.cos(phase)*3);
+ }));
+}
+if(sinking){
+sinkTimer+=dt;const progress=Math.min(1,sinkTimer/5.2);
+whirlpool.visible=true;whirlpool.position.x=boat.position.x;whirlpool.position.z=boat.position.z;
+whirlpool.rotation.y+=dt*(1.8+progress*5);
+vortexRings.forEach((r,i)=>{r.rotation.z+=dt*(.3+i*.015);r.material.opacity=.45+.35*Math.sin(t*3+i*.5)**2;});
+boat.rotation.y+=dt*(2+progress*5);
+boat.position.y=-progress*18+Math.sin(t*2)*.4;
+boat.rotation.z=progress*.65;boat.rotation.x=progress*.4;
+boat.scale.setScalar(Math.max(.08,1-progress*.87));
+if(progress>=1){sinking=false;whirlpool.visible=false;endChase();}
+}
+
+const gapNow=Math.hypot(boat.position.x-(krakenState==='hidden'?krakenSpot.x:kraken.position.x),boat.position.z-(krakenState==='hidden'?krakenSpot.z:kraken.position.z));
+document.getElementById('monsterDistance').textContent=Math.round(gapNow);
+document.getElementById('survival').textContent=Math.floor(chaseTime/60)+':'+String(Math.floor(chaseTime%60)).padStart(2,'0');
+document.getElementById('boost').textContent=Math.round(boostFuel);
+if(!sinking&&krakenState!=='eating'&&krakenState!=='done'){
+ boat.rotation.y=heading;
+ // Sample the water at bow, stern, port and starboard to match the wave slope.
+ const fX=-Math.sin(heading),fZ=-Math.cos(heading);
+ const rX=Math.cos(heading),rZ=-Math.sin(heading);
+ const x=boat.position.x,z=boat.position.z;
+ const center=waveAt(x,z,t);
+ const bow=waveAt(x+fX*5.5,z+fZ*5.5,t);
+ const stern=waveAt(x-fX*5.5,z-fZ*5.5,t);
+ const starboard=waveAt(x+rX*2.8,z+rZ*2.8,t);
+ const port=waveAt(x-rX*2.8,z-rZ*2.8,t);
+ const desiredPitch=Math.atan2(bow-stern,11);
+ const desiredRoll=Math.atan2(port-starboard,5.6);
+ // Buoyancy eases the hull into waves while controls stay fully arcade-style.
+ const follow=1-Math.exp(-dt*4.2);
+ floatY=THREE.MathUtils.lerp(floatY,center-.45,follow);
+ pitchAngle=THREE.MathUtils.lerp(pitchAngle,THREE.MathUtils.clamp(desiredPitch,-.43,.43),follow);
+ rollAngle=THREE.MathUtils.lerp(rollAngle,THREE.MathUtils.clamp(desiredRoll,-.48,.48),follow);
+ boat.position.y=floatY;
+ hull.rotation.x=pitchAngle;
+ hull.rotation.z=rollAngle;
+ // Visible bow spray and foamy wake, tied to ship direction and movement.
+ for(let i=0;i<wakeN;i++){
+  const trail=3+(i%22)*1.65;
+  const spread=((i*7)%13-6)*(.35+trail*.025);
+  const wx=x-fX*trail+rX*spread,wz=z-fZ*trail+rZ*spread;
+  const n=i*3;wakeCoords[n]=wx;wakeCoords[n+1]=waveAt(wx,wz,t)-.66+.22;wakeCoords[n+2]=wz;
+ }
+ wakeGeo.attributes.position.needsUpdate=true;
+ wakePoints.material.opacity=velocity===0?.08:.60;
+ for(let i=0;i<sprayN;i++){
+  const q=i*3,side=i%2?1:-1,seed=i*13.17;
+  const age=((t*(4+Math.abs(velocity)*.08)+seed)%14)/14;
+  const sx=x+fX*(4.4-age*9)+rX*side*(1.9+age*4);
+  const sz=z+fZ*(4.4-age*9)+rZ*side*(1.9+age*4);
+  sprayCoords[q]=sx;sprayCoords[q+1]=waveAt(sx,sz,t)-.85+.4+Math.sin(age*Math.PI)*Math.min(2.8,Math.abs(velocity)*.035);sprayCoords[q+2]=sz;
+ }
+ sprayGeo.attributes.position.needsUpdate=true;
+ spray.material.opacity=velocity===0?0:.6;
+}
+if(rain.visible){for(let i=0;i<rainCount;i++){const k=i*6;const seed=i*91.713;const x=((Math.sin(seed)*43758.5453)%1+1)%1;const z=((Math.sin(seed*1.37)*12741.29)%1+1)%1;const y=((t*(weather==='storm'?25:15)+i*2.37)%75);rainPositions[k]=boat.position.x+(x-.5)*160;rainPositions[k+1]=boat.position.y+75-y;rainPositions[k+2]=boat.position.z+(z-.5)*160;rainPositions[k+3]=rainPositions[k]-1.2;rainPositions[k+4]=rainPositions[k+1]-2.4;rainPositions[k+5]=rainPositions[k+2];}rainGeo.attributes.position.needsUpdate=true;}
+if(weather==='storm'&&t>nextLightning){lightning=.85;nextLightning=t+4+Math.random()*9;}lightning=Math.max(0,lightning-dt*3);flash.style.opacity=String(lightning*.55);sunlight.intensity=weatherSkies[weather][3]+lightning*5;
+const a=heading+orbit;const offset=new THREE.Vector3(Math.sin(a)*zoom, pitch+zoom*.15,Math.cos(a)*zoom);const target=boat.position.clone().add(new THREE.Vector3(0,10,0));camera.position.lerp(target.clone().add(offset),.055);camera.lookAt(target);
+foam.forEach((f,i)=>{const a=i*2.399,rr=12+Math.sqrt(i)*13;f.position.set(boat.position.x+Math.cos(a)*rr,waveAt(boat.position.x+Math.cos(a)*rr,boat.position.z+Math.sin(a)*rr,t)-.55,boat.position.z+Math.sin(a)*rr);f.rotation.z=a});
+krakenShadow.visible=started&&krakenState!=='done';
+krakenShadow.position.set(kraken.position.x,waveAt(kraken.position.x,kraken.position.z,t)-.68,kraken.position.z);
+krakenShadow.material.opacity=krakenState==='hidden'?.12:.34;
+attackFoam.visible=kraken.visible;
+attackFoam.position.set(kraken.position.x,waveAt(kraken.position.x,kraken.position.z,t)-.64,kraken.position.z);
+document.getElementById('heading').textContent=String((Math.round(heading*180/Math.PI)%360+360)%360).padStart(3,'0')+'°';document.getElementById('speed').textContent=velocity.toFixed(1);document.getElementById('distance').textContent=distance.toFixed(1);renderer.render(scene,camera)}animate();window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>
